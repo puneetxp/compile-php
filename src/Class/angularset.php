@@ -1,6 +1,6 @@
 <?php
 
-namespace Puneetxp\CompilePhp;
+namespace Puneetxp\CompilePhp\Class;
 
 class angularset
 {
@@ -11,7 +11,7 @@ class angularset
   function dbsetfortable($table)
   {
     $x = json_encode(array_column($table, "name"));
-    fwrite(index::fopen_dir($_ENV["dir"]  . "angular/src/app/shared/db/tables.ts"), "export const tables =$x");
+    fwrite(index::fopen_dir($_ENV["dir"]  . "/angular/src/app/shared/db/tables.ts"), "export const tables =$x");
   }
   function initservice($table)
   {
@@ -41,7 +41,7 @@ export class RunService {
 }
 ";
 
-    fwrite(index::fopen_dir($_ENV["dir"]  . "angular/src/app/shared/Service/run.service.ts"), $write);
+    fwrite(index::fopen_dir($_ENV["dir"]  . "/angular/src/app/shared/Service/run.service.ts"), $write);
   }
   function angularset()
   {
@@ -65,7 +65,7 @@ export class RunService {
       $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Form/' . ucfirst('validation/') . ucfirst($item['name']) . '.ts');
       fwrite($Interface, $this->formsset($item));
     }
-    $angular_config = json_decode(file_get_contents($_ENV["dir"]  . 'angular/angular.json'), TRUE);
+    $angular_config = json_decode(file_get_contents($_ENV["dir"]  . '/angular/angular.json'), TRUE);
 
     if (isset($json["angular"]["outputPath"])) {
       $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $json["angular"]["outputPath"];
@@ -74,9 +74,9 @@ export class RunService {
       $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$json["angular"]["assets"]]);
       foreach ($json["angular"]["assets"] as $value) {
         if ($value == "src/storage") {
-          symlink($_ENV["dir"]  . "storage/public", $_ENV["dir"]  . "angular/src/storage");
+          symlink($_ENV["dir"]  . "/storage/public", $_ENV["dir"]  . "/angular/src/storage");
         } else {
-          copy($_ENV["dir"]  . "config/angular/" . $value, $_ENV["dir"]  . "angular/" . $value);
+          copy($_ENV["dir"]  . "/config/angular/" . $value, $_ENV["dir"]  . "/angular/" . $value);
         }
       }
     }
@@ -84,7 +84,7 @@ export class RunService {
       $angular_config,
       JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
     ));
-    foreach (index::scanfullfolder($_ENV["dir"]  . "/template/angular/") as $file) {
+    foreach (index::scanfullfolder(__DIR__  . "/../template/angular/") as $file) {
       $pre = $_ENV["dir"]  . '/../angular';
       $target = str_replace($_ENV["dir"]  . "/template/angular", "",  $file);
       if (is_file(!$pre . $target)) {

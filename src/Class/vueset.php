@@ -1,6 +1,6 @@
 <?php
 
-namespace Puneetxp\CompilePhp;
+namespace Puneetxp\CompilePhp\Class;
 
 class vueset
 {

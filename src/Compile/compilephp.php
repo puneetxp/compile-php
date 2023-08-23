@@ -1,5 +1,7 @@
 <?php
 
+
+namespace Puneetxp\CompilePhp\Compile;
 class compilephp
 {
 
