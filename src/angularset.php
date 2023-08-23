@@ -11,7 +11,7 @@ class angularset
   function dbsetfortable($table)
   {
     $x = json_encode(array_column($table, "name"));
-    fwrite(index::fopen_dir(__DIR__ . "/../angular/src/app/shared/db/tables.ts"), "export const tables =$x");
+    fwrite(index::fopen_dir($_ENV["dir"]  . "angular/src/app/shared/db/tables.ts"), "export const tables =$x");
   }
   function initservice($table)
   {
@@ -41,7 +41,7 @@ export class RunService {
 }
 ";
 
-    fwrite(index::fopen_dir(__DIR__ . "/../angular/src/app/shared/Service/run.service.ts"), $write);
+    fwrite(index::fopen_dir($_ENV["dir"]  . "angular/src/app/shared/Service/run.service.ts"), $write);
   }
   function angularset()
   {
@@ -49,23 +49,23 @@ export class RunService {
     $this->initservice($this->table);
     foreach ($this->table as $item) {
       $Interface_write = index::Interface_set($item);
-      $angular_path = '../angular/src/app/shared/';
-      $servicets = index::fopen_dir(__DIR__ . "/" . $angular_path . ucfirst('service/') . ucfirst('model/') . ucfirst($item['name']) . '.service.ts');
+      $angular_path = '/angular/src/app/shared/';
+      $servicets = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('service/') . ucfirst('model/') . ucfirst($item['name']) . '.service.ts');
       $servicets_write = $this->servicets_set($item);
       fwrite($servicets, $servicets_write);
-      $statesngxs = index::fopen_dir(__DIR__ . "/" . $angular_path . ucfirst('ngxs/') . ucfirst('state/') . ucfirst($item['name']) . '.state.ts');
+      $statesngxs = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('ngxs/') . ucfirst('state/') . ucfirst($item['name']) . '.state.ts');
       $statesngxs_write = $this->statengxs_set($item);
       fwrite($statesngxs, $statesngxs_write);
-      $actionngxs = index::fopen_dir(__DIR__ . "/" . $angular_path . ucfirst('ngxs/') . ucfirst('action/') . ucfirst($item['name']) . '.action.ts');
+      $actionngxs = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('ngxs/') . ucfirst('action/') . ucfirst($item['name']) . '.action.ts');
       $actionngxs_write = $this->actionngxs_set($item);
       fwrite($actionngxs, $actionngxs_write);
-      $Interface = index::fopen_dir(__DIR__ . "/" . $angular_path . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+      $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
       fwrite($Interface, $Interface_write);
       $this->formsset($item);
-      $Interface = index::fopen_dir(__DIR__ . "/" . $angular_path . 'Form/' . ucfirst('validation/') . ucfirst($item['name']) . '.ts');
+      $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Form/' . ucfirst('validation/') . ucfirst($item['name']) . '.ts');
       fwrite($Interface, $this->formsset($item));
     }
-    $angular_config = json_decode(file_get_contents(__DIR__ . '/../angular/angular.json'), TRUE);
+    $angular_config = json_decode(file_get_contents($_ENV["dir"]  . 'angular/angular.json'), TRUE);
 
     if (isset($json["angular"]["outputPath"])) {
       $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $json["angular"]["outputPath"];
@@ -74,19 +74,19 @@ export class RunService {
       $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$json["angular"]["assets"]]);
       foreach ($json["angular"]["assets"] as $value) {
         if ($value == "src/storage") {
-          symlink(__DIR__ . "/../storage/public", __DIR__ . "/../angular/src/storage");
+          symlink($_ENV["dir"]  . "storage/public", $_ENV["dir"]  . "angular/src/storage");
         } else {
-          copy(__DIR__ . "/config/angular/" . $value, __DIR__ . "/../angular/" . $value);
+          copy($_ENV["dir"]  . "config/angular/" . $value, $_ENV["dir"]  . "angular/" . $value);
         }
       }
     }
-    file_put_contents(__DIR__ . '/../angular/angular.json', json_encode(
+    file_put_contents($_ENV["dir"]  . '/angular/angular.json', json_encode(
       $angular_config,
       JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
     ));
-    foreach (index::scanfullfolder(__DIR__ . "/template/angular/") as $file) {
-      $pre = __DIR__ . '/../angular';
-      $target = str_replace(__DIR__ . "/template/angular", "",  $file);
+    foreach (index::scanfullfolder($_ENV["dir"]  . "/template/angular/") as $file) {
+      $pre = $_ENV["dir"]  . '/../angular';
+      $target = str_replace($_ENV["dir"]  . "/template/angular", "",  $file);
       if (is_file(!$pre . $target)) {
         copy($file, $pre . $target);
       }

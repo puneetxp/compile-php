@@ -11,13 +11,13 @@ class solidset
     {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
-            $solidjs = '../solidjs/src/shared/';
-            $Interface = index::fopen_dir(__DIR__ . "/" . $solidjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+            $solidjs = 'solidjs/src/shared/';
+            $Interface = index::fopen_dir($_ENV["dir"] . $solidjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             fwrite($Interface, $Interface_write);
-            $solidstore = index::fopen_dir(__DIR__ . "/" . $solidjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+            $solidstore = index::fopen_dir($_ENV["dir"] . $solidjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             $solidstore_write = solidset::SolidTsStore($item);
             fwrite($solidstore, $solidstore_write);
-            $solidservice = index::fopen_dir(__DIR__ . "/" . $solidjs . 'Service/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+            $solidservice = index::fopen_dir($_ENV["dir"] . $solidjs . 'Service/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             $solidservice_write = solidset::SolidServicesTs($item);
             fwrite($solidservice, $solidservice_write);
         }
