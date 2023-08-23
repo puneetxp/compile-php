@@ -2,8 +2,7 @@
 
 namespace Puneetxp\CompilePhp;
 
-use Puneetxp\CompilePhp\deno\denoset;
-use Puneetxp\CompilePhp\php\phpset;
+use Puneetxp\CompilePhp\Class\{mysql, index, denoset, phpset, solidset, vueset, angularset};
 
 class setup
 {
@@ -22,15 +21,34 @@ class setup
    {
       $_ENV["dir"] = $dir;
       $this->route_use_array['The\\'] = ["Route"];
-      $this->json_set = json_decode(file_get_contents($_ENV["dir"]  . '/../config.json'), TRUE);
+      $this->json_set = json_decode(file_get_contents($_ENV["dir"]  . '/config.json'), TRUE);
       foreach (glob($_ENV["dir"] . "/database/model/*.json") as $file) {
          $filename = preg_replace("/.*.\/(.*).json/", "$1", $file);
          $j = json_decode(file_get_contents($file), TRUE);
-         if (isset($j['alter'])) {
-         } else {
-            $this->files[$filename] = $j;
-         }
+         $this->files[$filename] = $j;
       }
+   }
+   public function config()
+   {
+      $this->table_set();
+      //deno
+      if (in_array('deno', $this->json_set['back-end'])) {
+         $this->deno_set();
+         echo "Deno Build\n";
+      }
+      //php
+      if (in_array('php', $this->json_set['back-end'])) {
+         $this->php_set();
+         echo "PHP Build\n";
+      }
+      //angular
+      if (in_array('angular', $this->json_set['front-end'])) {
+         $this->angular_set();
+         echo "Angular Build\n";
+      }
+      //write mysql
+      $this->write();
+      return $this;
    }
    public function table_set()
    {
@@ -100,13 +118,19 @@ class setup
       $migration_sql = '';
       $migration_relation = '';
       foreach ($this->table as $item) {
-         $migration_sql .= file_get_contents($_ENV["dir"]  . "/../database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($item['name']) . '.sql', 'TRUE');
-         $migration_relation .= file_get_contents($_ENV["dir"]  . "/../database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($item['name']) . '_relation.sql', 'TRUE');
+         $migration_sql .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($item['name']) . '.sql', 'TRUE');
+         $migration_relation .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($item['name']) . '_relation.sql', 'TRUE');
       }
       $migration_sql .= 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");';
-      file_put_contents($_ENV["dir"]  . '/../database/structure.sql', ($migration_sql));
-      file_put_contents($_ENV["dir"]  . '/../database/relation.sql', ($migration_relation));
-      file_put_contents($_ENV["dir"]  . '/../database/Migration.sql', ($migration_sql . ' ' . $migration_relation));
-      file_put_contents($_ENV["dir"]  . '/../config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
+      file_put_contents($_ENV["dir"]  . '/database/structure.sql', ($migration_sql));
+      file_put_contents($_ENV["dir"]  . '/database/relation.sql', ($migration_relation));
+      file_put_contents($_ENV["dir"]  . '/database/Migration.sql', ($migration_sql . ' ' . $migration_relation));
+      file_put_contents($_ENV["dir"]  . '/config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
+      return $this;
+   }
+   public function migrate()
+   {
+      (new mysql())->migrate();
+      return $this;
    }
 }

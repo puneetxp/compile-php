@@ -1,6 +1,6 @@
 <?php
 
-namespace Puneetxp\CompilePhp\deno;
+namespace Puneetxp\CompilePhp\Class;
 
 use Puneetxp\CompilePhp\index;
 
