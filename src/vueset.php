@@ -11,13 +11,13 @@ class vueset
     {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
-            $vuedjs = '../vuets/src/shared/';
-            $Interface = index::fopen_dir(__DIR__ . "/" . $vuedjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+            $vuedjs = 'vuets/src/shared/';
+            $Interface = index::fopen_dir($_ENV["dir"] . $vuedjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             fwrite($Interface, $Interface_write);
-            $vuestore = index::fopen_dir(__DIR__ . "/" . $vuedjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.js');
+            $vuestore = index::fopen_dir($_ENV["dir"] . $vuedjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.js');
             $vuestore_write = $this->Vue_StoreJs($item);
             fwrite($vuestore, $vuestore_write);
-            $vueservice = index::fopen_dir(__DIR__ . "/" . $vuedjs . 'Service/' . ucfirst('model/') . ucfirst($item['name']) . '.js');
+            $vueservice = index::fopen_dir($_ENV["dir"] . $vuedjs . 'Service/' . ucfirst('model/') . ucfirst($item['name']) . '.js');
             $vueservice_write = $this->Vue_ServiceJs($item);
             fwrite($vueservice, $vueservice_write);
         }
