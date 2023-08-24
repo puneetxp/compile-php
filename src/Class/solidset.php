@@ -11,7 +11,7 @@ class solidset
     {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
-            $solidjs = 'solidjs/src/shared/';
+            $solidjs = '/solidjs/src/shared/';
             $Interface = index::fopen_dir($_ENV["dir"] . $solidjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             fwrite($Interface, $Interface_write);
             $solidstore = index::fopen_dir($_ENV["dir"] . $solidjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
