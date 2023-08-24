@@ -2,15 +2,13 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-use Puneetxp\CompilePhp\index;
-
 class phpset
 {
     public function __construct(public $table, public $json)
     {
         $GLOBALS['For'] = [];
         foreach ($table as $item) {
-            $model = index::fopen_dir(__DIR__ . "/../php/App/" . ucfirst('model/') . ucfirst($item['name']) . '.php');
+            $model = index::fopen_dir($_ENV['dir'] . "/php/App/" . ucfirst('model/') . ucfirst($item['name']) . '.php');
             $model_write = $this->phpModel($item);
             fwrite($model, $model_write);
             if (isset($item['crud']['roles'])) {
@@ -218,7 +216,7 @@ class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {
 
     function phpwritec($item, $value, $key, $role = '', $json)
     {
-        $json_set = json_decode(file_get_contents(__DIR__ . '/../config.json'), TRUE);
+        $json_set = json_decode(file_get_contents($_ENV['dir'] . '/config.json'), TRUE);
         if ($role == '') {
             if (!isset($GLOBALS['For'][$key])) {
                 $GLOBALS['For'][$key] = ['path' => $key, "controller" => [], 'child' => []];
@@ -240,7 +238,7 @@ class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {
         }
         if (!isset($json_set["table"][$item["name"]])) {
             $controller_write = $this->phpController($item, $value, $key);
-            $controller = index::fopen_dir(__DIR__ . "/../php/App/" . ucfirst('controller/') . ucfirst($key) . '/' . ucfirst($key) . ucfirst($item['name']) . 'Controller.php');
+            $controller = index::fopen_dir($_ENV['dir'] . "/php/App/" . ucfirst('controller/') . ucfirst($key) . '/' . ucfirst($key) . ucfirst($item['name']) . 'Controller.php');
             fwrite($controller, $controller_write);
         }
     }
@@ -254,13 +252,13 @@ class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {
         unset($route['controller']);
         $route = var_export($route, true);
         $route_controller = implode("\n", $controller);
-        $routx = index::fopen_dir(__DIR__ . "/../php/" . ucfirst('routes/pre/') . ucfirst($key) . '.php');
+        $routx = index::fopen_dir($_ENV['dir'] . "/php/" . ucfirst('routes/pre/') . ucfirst($key) . '.php');
         fwrite($routx, preg_replace("/'class' => '(.+?)'/", '"class" => ${1}::class', "<?php\n\n$route_controller \n\n$$key = $route;\n\n"));
     }
 
     function phpenv($json)
     {
-        $env = index::fopen_dir(__DIR__ . "/../php/env.php");
+        $env = index::fopen_dir($_ENV['dir'] . "/php/env.php");
         fwrite($env, index::php_wrapper(implode("", array_map(function ($key, $value) {
             return "
       define('$key', " . json_encode($value) . ");";

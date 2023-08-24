@@ -1,7 +1,9 @@
 <?php
 
 namespace Puneetxp\CompilePhp\Class;
+
 use mysqli;
+
 class mysql
 {
     public static function addattribute($tables)
@@ -64,8 +66,8 @@ class mysql
         foreach ($tables as $table) {
             $mysql_write = mysql::table($table);
             $mysql_relation = mysql::migrate_table($table);
-            $mysql = index::fopen_dir(__DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($table['name']) . '.sql');
-            $mysql_relation_file = index::fopen_dir(__DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($table['name']) . '_relation.sql');
+            $mysql = index::fopen_dir($_ENV['dir'] . "/database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($table['name']) . '.sql');
+            $mysql_relation_file = index::fopen_dir($_ENV['dir'] . "/database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($table['name']) . '_relation.sql');
             fwrite($mysql_relation_file, $mysql_relation);
             fwrite($mysql, $mysql_write);
         }
@@ -83,7 +85,7 @@ class mysql
         $this->dir["relations"] = __DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('relations');
         $conn = new mysqli($this->json_set["env"]["dbhost"], $this->json_set["env"]["dbuser"], $this->json_set["env"]["dbpwd"]);
         if ($this->json_set["fresh"] == true) {
-            $conn->query("CREATE DATABASE IF NOT EXISTS ".$this->json_set["env"]["dbname"] . ";");
+            $conn->query("CREATE DATABASE IF NOT EXISTS " . $this->json_set["env"]["dbname"] . ";");
             $conn->query("Drop DATABASE " . $this->json_set["env"]["dbname"] . ";");
         }
         $conn->query("CREATE DATABASE IF NOT EXISTS " . $this->json_set["env"]["dbname"] . ";");

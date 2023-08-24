@@ -2,8 +2,6 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-use Puneetxp\CompilePhp\index;
-
 class denoset
 {
     public function __construct(public $table, public $json)
@@ -12,7 +10,7 @@ class denoset
 
     function denoController($table, $curd, $key = '')
     {
-        return 'import { response ,Session} from "https://deno.land/x/the@0.0.0.4.7/mod.ts";
+        return 'import { response ,Session} from "../../../dep.ts";
 import { ' . ucfirst($table['name']) . '$ } from "../../Model/' . ucfirst($table['name']) . '.ts";
 export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
             (in_array("all", $curd) ? '
@@ -115,7 +113,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
         }
         $fillable .= implode("','", $fillable_array);
         $fillable .= "']";
-        return "import { Model, relation } from 'https://deno.land/x/the@0.0.0.4.7/mod.ts';
+        return "import { Model, relation } from '../../dep.ts';
 " . $import . "
 class Standard extends Model {
   name = '" . $table['name'] . "';
@@ -133,10 +131,12 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
     public $all = [];
     function denoset()
     {
+        index::templatecopy("deno", "deno");
         $GLOBALS['For'] = [];
         foreach ($this->table as $item) {
-            $model = index::fopen_dir(__DIR__ . "/../deno/App/" . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+            $model = index::fopen_dir($_ENV['dir'] . "/deno/App/" . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             $model_write = $this->denoModel($item);
+            index::createfile($_ENV['dir'] . "/deno/App/Interface/Model/" . ucfirst($item['name']) . '.ts', index::interface_set($item));
             fwrite($model, $model_write);
             if (isset($item['crud']['roles'])) {
                 foreach ($item['crud']['roles'] as $key => $value) {
@@ -167,12 +167,12 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
         if (isset($GLOBALS['For']['public'])) {
             $this->denoroterc('ipublic', $GLOBALS['For']['public']);
         }
-        index::createfile(implode("\n", [
+        index::createfile($_ENV['dir'] . '/deno/.env', implode("\n", [
             "DBHOST=" . $this->json['env']['dbhost'],
-            "DBUSER=" . $this->json['env']['username'],
-            "DBPWD=" . $this->json['env']['password'],
+            "DBUSER=" . $this->json['env']['dbuser'],
+            "DBPWD=" . $this->json['env']['dbpwd'],
             "DBNAME=" . $this->json['env']['dbname']
-        ]), __DIR__ . '/../deno/.env');
+        ]));
     }
     function denowritec($item, $value, $key, $role = '')
     {
@@ -196,7 +196,8 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
             }
         }
         $controller_write = $this->denoController($item, $value, $key);
-        $controller = index::fopen_dir(__DIR__ . "/../deno/App/" . ucfirst('controller/') . ucfirst($key) . '/' .  ucfirst($item['name']) . 'Controller.ts');
+        // print_r($_ENV['dir'] . "/deno/App/" . ucfirst('controller/') . ucfirst($key) . '/' .  ucfirst($item['name']) . 'Controller.ts');
+        $controller = index::fopen_dir($_ENV['dir'] . "/deno/App/" . ucfirst('controller/') . ucfirst($key) . '/' .  ucfirst($item['name']) . 'Controller.ts');
         fwrite($controller, $controller_write);
     }
 
@@ -210,7 +211,7 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
         $route_write = implode("
 ", $controller) . '
    ' . preg_replace('/"class": "(.+?)"/', '"class":${1}', str_replace("\/", "/", 'export const ' . $key . ' = [' . json_encode($route, JSON_PRETTY_PRINT) . '];'));
-        $route = index::fopen_dir(__DIR__ . "/../deno/App/" . ucfirst('routes/') . ucfirst($key) . '.ts');
+        $route = index::fopen_dir($_ENV['dir'] . "/deno/App/" . ucfirst('routes/') . ucfirst($key) . '.ts');
         fwrite($route, $route_write);
     }
 }

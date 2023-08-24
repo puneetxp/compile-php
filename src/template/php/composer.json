@@ -1,0 +1,11 @@
+{
+  "autoload": {
+    "psr-4": {
+      "App\\": "App/",
+      "view\\": "view/"
+    }
+  },
+  "require": {
+    "puneetxp/the": "^0.1.0"
+  }
+}

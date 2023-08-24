@@ -4,10 +4,6 @@ namespace Puneetxp\CompilePhp\Class;
 
 class index
 {
-    private $table = [];
-    public function __construct(private $rawtable)
-    {
-    }
     static function interface_set($table)
     {
         $x = [];
@@ -67,7 +63,10 @@ class index
     {
         fwrite(index::fopen_dir($dir), $string);
     }
-
+    public static function copyfile($from, $to)
+    {
+        fwrite(index::fopen_dir($to), file_get_contents($from));
+    }
     static function scanfullfolder($dir)
     {
         $x = [];
@@ -83,60 +82,87 @@ class index
         }
         return $x;
     }
-    public function defaultsetup()
+    public $table = [];
+    public function __construct(private $rawtable, private $all)
     {
-        if (in_array('id', $this->rawtable)) {
-            $table[] = ['name' => 'id', 'mysql_data' => 'int', 'datatype' => 'number', 'fillable' => "false", 'sql_attribute' => 'UNSIGNED PRIMARY KEY AUTO_INCREMENT'];
+        $this->table["name"] = $this->rawtable['name'];
+        $this->table["table"] = $this->rawtable['table'];
+        if (isset($rawtable['type'])) {
+            $this->table["type"] = $this->rawtable['type'];
         }
-        if (in_array('created_at', $this->rawtable)) {
-            $table[] = ['name' => 'created_at', 'mysql_data' => 'timestamp', 'datatype' => 'Date', 'fillable' => "false", 'sql_attribute' => 'DEFAULT CURRENT_TIMESTAMP NOT NULL'];
+        if (isset($rawtable['crud'])) {
+            $this->table["crud"] = $this->rawtable['crud'];
         }
-        if (in_array('updated_at', $this->rawtable)) {
-            $table[] = ['name' => 'updated_at', 'mysql_data' => 'timestamp', 'datatype' => 'Date', 'fillable' => "false", 'sql_attribute' => 'DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL'];
+        $this->table["data"] = [];
+    }
+    public function defaultsetup($default)
+    {
+        if (in_array('id', $default)) {
+            $this->table["data"][] = ['name' => 'id', 'mysql_data' => 'int', 'datatype' => 'number', 'fillable' => "false", 'sql_attribute' => 'UNSIGNED PRIMARY KEY AUTO_INCREMENT'];
+        }
+        if (in_array('created_at', $default)) {
+            $this->table["data"][] = ['name' => 'created_at', 'mysql_data' => 'timestamp', 'datatype' => 'Date', 'fillable' => "false", 'sql_attribute' => 'DEFAULT CURRENT_TIMESTAMP NOT NULL'];
+        }
+        if (in_array('updated_at', $default)) {
+            $this->table["data"][] = ['name' => 'updated_at', 'mysql_data' => 'timestamp', 'datatype' => 'Date', 'fillable' => "false", 'sql_attribute' => 'DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL'];
         }
         return $this;
     }
     public function addional_default()
     {
         isset($this->rawtable['enable']) ?
-            $this->table[] = ['name' => 'enable', 'mysql_data' => 'TINYINT(1)', 'datatype' => 'number', 'default' => 1, 'sql_attribute' => 'DEFAULT ' . $this->rawtable['enable'] . ' NOT NULL '] : '';
+            $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'TINYINT(1)', 'datatype' => 'number', 'default' => 1, 'sql_attribute' => 'DEFAULT ' . $this->rawtable['enable'] . ' NOT NULL '] : '';
         if (isset($this->rawtable["additional"])) {
             switch ($this->rawtable->additional) {
                 case "seo":
-                    $this->table[] = ['name' => 'enable', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NOT NULL '];
+                    $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NOT NULL '];
                     break;
                 case "slug":
-                    $this->table = [...$this->table, ['name' => 'title', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NULL '], ['name' => 'seo_description', 'mysql_data' => 'longtext', 'datatype' => 'string', 'sql_attribute' => ' NULL ']];
+                    $this->table["data"][] = ['name' => 'title', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NULL '];
+                    $this->table["data"][] = ['name' => 'seo_description', 'mysql_data' => 'longtext', 'datatype' => 'string', 'sql_attribute' => ' NULL '];
                     break;
             }
         }
         return $this;
     }
-    public function default_attribute($item)
+    public static function table_set($table, $all)
     {
-        if (isset($item['sql_attribute'])) {
-            if (str_contains($item['sql_attribute'], 'NULL')) {
-            } else {
-                $item['sql_attribute'] = $item['sql_attribute'] . " NOT NULL";
-            }
-        } elseif (isset($item['default'])) {
-            $item['sql_attribute'] = " ";
-        } else {
-            $item['sql_attribute'] = " NOT NULL";
-        }
-        return $item;
+        return (new static($table, $all))->defaultsetup(isset($table["default"]) ? $table["default"] : ['id', 'created_at', 'updated_at'])->addional_default()->importdata()->relation();
     }
-    public static function table_set($table)
+    public function importdata()
     {
-        return (new static($table))->defaultsetup()->addional_default();
+        if (isset($this->rawtable['data']) && count($this->rawtable["data"])) {
+            $this->table["data"] = array_merge($this->table["data"], $this->rawtable["data"]);
+        }
+        return $this;
+    }
+    public function relation()
+    {
+        if (isset($this->rawtable['relation'])) {
+            foreach ($this->rawtable['relation'] as $relation) {
+                $r = [];
+                is_array($relation) ? $r['name'] = $relation['name'] : $r['name'] = $relation;
+                $r = array_search($r['name'], array_column($this->all, 'name'));
+                $rx = ['table' => $this->all[$r]['table'], 'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id', 'key' => 'id'];
+                $this->table["data"][] = [
+                    'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id',
+                    'mysql_data' => 'int UNSIGNED',
+                    'datatype' => 'number',
+                    ...(isset($relation["default"]) ? ["default" => $relation["default"]] : []),
+                    ...(isset($relation["sql_attribute"]) ? ["sql_attribute" => $relation["sql_attribute"]] : []),
+                    'relations' => [$this->all[$r]['name'] => $rx]
+                ];
+                $this->table['relations'][$this->all[$r]['name']] = $rx;
+            }
+        }
+        return $this;
     }
     public static function templatecopy(string $folder, string $destination)
     {
-        foreach (index::scanfullfolder(__DIR__ . "/template/$folder") as $file) {
-            $pre = __DIR__ . '/../' . $destination;
-            $target = str_replace(__DIR__ . "/template/$folder", "",  $file);
-            if (!is_file($pre . $target)) {
-                copy($file, $pre . $target);
+        foreach (index::scanfullfolder(__DIR__ . "/../template/$folder") as $file) {
+            $target = str_replace(__DIR__ . "/../template/$folder", "",  $file);
+            if (!is_file($_ENV['dir']  . DIRECTORY_SEPARATOR . $destination . $target)) {
+                index::copyfile($file, $_ENV['dir'] . DIRECTORY_SEPARATOR  . $destination .  $target);
             }
         }
     }
