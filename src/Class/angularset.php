@@ -26,7 +26,7 @@ class angularset
     }
     $write = "import { Injectable } from '@angular/core';" .
       implode("\n", $serviceimport) . "
-import { IndexedDBService } from 'the-angular/lib/service/indexed-db.service';
+import { IndexedDBService } from './indexed-db.service';
 import { tables } from '../db/tables';
 @Injectable({
   providedIn: 'root'
@@ -84,13 +84,7 @@ export class RunService {
       $angular_config,
       JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
     ));
-    foreach (index::scanfullfolder(__DIR__  . "/../template/angular/") as $file) {
-      $pre = $_ENV["dir"]  . '/../angular';
-      $target = str_replace($_ENV["dir"]  . "/template/angular", "",  $file);
-      if (is_file(!$pre . $target)) {
-        copy($file, $pre . $target);
-      }
-    }
+    index::templatecopy("angular", "angular");
   }
 
   function actionngxs_set($table)
@@ -133,7 +127,7 @@ export class Upsert$Name {
 import { Add$Name, Delete$Name, Edit$Name, Set$Name, Upsert$Name  } from '../Action/$Name" . ".action';
 import { $Name } from '$dir/Interface/Model/$Name';
 import { Injectable } from '@angular/core';
-import { IndexedDBService } from 'the-angular/lib/service/indexed-db.service';
+import { IndexedDBService } from '../../Service/indexed-db.service';
 const table = '$name';
 export interface $Name" . "StateModel {
   $names: $Name" . "[]" . ";
@@ -223,8 +217,8 @@ import { Add$Name, Delete$Name, Edit$Name, Set$Name , Upsert$Name } from '$dir" 
 import { $Name } from '$dir" . "Interface/Model/$Name';
 import { $Name" . "StateModel } from '$dir" . "Ngxs/State/$Name.state';
 import { AsyncPipe } from '@angular/common';
-import { IndexedDBService } from 'the-angular/lib/service/indexed-db.service';
-import { FormDataService } from 'the-angular/lib/service/Form/FormData.service';
+import { IndexedDBService } from '../indexed-db.service';
+import { FormDataService } from '../Form/FormData.service';
 type keys = '" . implode("' | '", array_column($table['data'], 'name')) . "';
 interface find {
   key?: keys;

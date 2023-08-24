@@ -22,7 +22,7 @@ class setup
       $_ENV["dir"] = $dir;
       $this->route_use_array['The\\'] = ["Route"];
       $this->json_set = json_decode(file_get_contents($_ENV["dir"]  . '/config.json'), TRUE);
-      foreach (glob($_ENV["dir"] . "/database/model/*.json") as $file) {
+      foreach (glob($_ENV["dir"] . "/setup/model/*.json") as $file) {
          $filename = preg_replace("/.*.\/(.*).json/", "$1", $file);
          $j = json_decode(file_get_contents($file), TRUE);
          $this->files[$filename] = $j;
@@ -58,7 +58,7 @@ class setup
                $this->roles = array_merge(array_keys($item['crud']['roles']), $this->roles);
             }
          }
-         $this->table[] = index::table_set($item, array_values($this->files));
+         $this->table[] = index::table_set($item, array_values($this->files))->table;
       }
       $this->roles = array_filter(array_unique($this->roles), fn ($role) => !($role == "*" || $role == "-"));
       for ($i = 0; $i < count($this->table); ++$i) {
@@ -87,13 +87,13 @@ class setup
    }
    public function deno_set()
    {
-      new denoset($this->table, $this->json_set);
+      (new denoset($this->table, $this->json_set))->denoset();
       echo "Deno Build\n";
       return $this;
    }
    public function angular_set()
    {
-      new angularset($this->table, $this->json_set);
+      (new angularset($this->table, $this->json_set))->angularset();
       echo "Angular Build\n";
       return $this;
    }
