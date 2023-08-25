@@ -4,10 +4,7 @@ import {
   Session,
 } from "../../dep.ts";
 import { Active_role } from "../Interface/Model/Active_role.ts";
-import { Role } from "../Interface/Model/Role.ts";
 import { Active_role$ } from "../Model/Active_role.ts";
-import { Book$ } from "../Model/Book.ts";
-import { Role$ } from "../Model/Role.ts";
 import { User$ } from "../Model/User.ts";
 
 export class AuthController {
@@ -33,7 +30,6 @@ export class AuthController {
           "user_id": user.id,
         }).Item;
         const _session = Session.startnew(user, active_roles);
-        Book$.create([{ name: body.name, user_id: user.id }]);
         return await response.JSONF(
           _session.getLogin().Login,
           _session.returnCookie(),
@@ -49,7 +45,6 @@ export class AuthController {
     body.password = await hash.sha3_256(body.password);
     const register = await (await User$.create([body])).lastinsertid();
     const _session = Session.startnew(register[0]);
-    Book$.create([{ name: body.name, user_id: register.id }]);
     return await response.JSONF(
       _session.getLogin().Login,
       _session.returnCookie(),
