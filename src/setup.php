@@ -22,7 +22,7 @@ class setup
       $_ENV["dir"] = $dir;
       $this->route_use_array['The\\'] = ["Route"];
       $this->json_set = json_decode(file_get_contents($_ENV["dir"]  . '/config.json'), TRUE);
-      foreach (glob($_ENV["dir"] . "/setup/model/*.json") as $file) {
+      foreach (glob($_ENV["dir"] . "/database/Model/*.json") as $file) {
          $filename = preg_replace("/.*.\/(.*).json/", "$1", $file);
          $j = json_decode(file_get_contents($file), TRUE);
          $this->files[$filename] = $j;
