@@ -49,12 +49,12 @@ class setup
       //solid
       if (in_array('solidjs', $this->json_set['front-end'])) {
          $this->solidjs_set();
-         echo "Angular Build\n";
+         echo "Solid Build\n";
       }
       //vue
       if (in_array('vuets', $this->json_set['front-end'])) {
          $this->vuejs_set();
-         echo "Angular Build\n";
+         echo "Vue Build\n";
       }
       //write mysql
       $this->write();
