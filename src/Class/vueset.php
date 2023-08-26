@@ -11,7 +11,7 @@ class vueset
     {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
-            $vuedjs = 'vuets/src/shared/';
+            $vuedjs = '/vuets/src/shared/';
             $Interface = index::fopen_dir($_ENV["dir"] . $vuedjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             fwrite($Interface, $Interface_write);
             $vuestore = index::fopen_dir($_ENV["dir"] . $vuedjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.js');
