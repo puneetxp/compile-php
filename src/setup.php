@@ -46,6 +46,16 @@ class setup
          $this->angular_set();
          echo "Angular Build\n";
       }
+      //solid
+      if (in_array('solidjs', $this->json_set['front-end'])) {
+         $this->solidjs_set();
+         echo "Angular Build\n";
+      }
+      //vue
+      if (in_array('vuets', $this->json_set['front-end'])) {
+         $this->vuejs_set();
+         echo "Angular Build\n";
+      }
       //write mysql
       $this->write();
       return $this;
