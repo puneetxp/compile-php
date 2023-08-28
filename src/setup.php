@@ -3,7 +3,7 @@
 namespace Puneetxp\CompilePhp;
 
 use Puneetxp\CompilePhp\Class\{mysql, index, denoset, phpset, solidset, vueset, angularset};
-
+use Puneetxp\CompilePhp\compile\compilephp;
 class setup
 {
    public $pattern_route = '/\$route.*?;/';
@@ -136,6 +136,10 @@ class setup
       file_put_contents($_ENV["dir"]  . '/database/relation.sql', ($migration_relation));
       file_put_contents($_ENV["dir"]  . '/database/Migration.sql', ($migration_sql . ' ' . $migration_relation));
       file_put_contents($_ENV["dir"]  . '/config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
+      return $this;
+   }
+   public function template(){
+      new compilephp("View",$this->dir,$this->json_set);
       return $this;
    }
    public function migrate()
