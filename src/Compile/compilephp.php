@@ -2,6 +2,7 @@
 
 
 namespace Puneetxp\CompilePhp\Compile;
+use Puneetxp\CompilePhp\Class\index;
 class compilephp
 {
 
@@ -15,10 +16,10 @@ class compilephp
 
     public function __construct(
         public $dir = 'View',
-        public $pre = __DIR__ . "/../../Resource/"
+        public $pre = __DIR__ . "/../../Resource",
+        public $destination = "/php",
     ) {
-        $this->config = json_decode(file_get_contents(__DIR__ . '/../../config.json'), TRUE);
-        // $this->y = fopen(__DIR__ . '/../View/Component.php', 'w');
+        $this->config = json_decode(file_get_contents($this->pre . '/config.json'), TRUE);
     }
 
     function folderscan($dir)
@@ -29,7 +30,6 @@ class compilephp
                 } elseif ($file == "..") {
                 } elseif (is_file("$dir/$file")) {
                     $this->ComponentDir($dir, $file);
-                    // $this->x[$dir . DIRECTORY_SEPARATOR . $file] = $this->ComponentDir($dir, $file);
                 } elseif (is_dir("$dir/$file")) {
                     $this->folderscan("$dir/$file");
                 }
@@ -55,7 +55,6 @@ class compilephp
             }
         }
         return $this->repfunction("/()" . $this->t_pattern . "/m", $set, $n, $x);
-        // return preg_replace_callback("/()" . $this->t_pattern . "/m", array($this, "repfunction"), $set);
     }
 
     public function repfunction($__pattern, $set, $n, $x)
@@ -97,7 +96,6 @@ class compilephp
                 if (preg_match("/[:]([a-zA-Z\d?:\-_+]{1,})/", $i[1])) {
                     if (isset($i[4]) && $i[4] !== "") {
                         $variable = json_decode($i[4], true);
-                        // print_r($variable);
                         if ($variable) {
                             $n[] = str_replace(":", "", $i[1]) . ": " . var_export($variable, true);
                         }
@@ -132,9 +130,6 @@ class compilephp
         $file = preg_replace_callback("/[@]elseif\((.*?)\)/m", fn ($match) => "<?php }elseif(" . $this->variablecon($match) . "){ ?>", $file);
         $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
         $file = preg_replace("/[@]endif/m", "<?php } ?>", $file);
-        /* $file = preg_replace_callback("/[@]foreach\((.+) i (.+)\)/m", fn ($match) => "<?php foreach(" . $this->variablecon($match) . " as " . $match[2] . "){ ?>", $file);
-          // $file = preg_replace("/[@]endforeach/m", " <?php } ?> ", $file);
-         */
         return $file;
     }
 
@@ -177,7 +172,8 @@ class compilephp
 
     public function ComponentDir($dir, $file)
     {
-        $namespace = strtolower(str_replace($this->pre, "", $dir));
+        $namespace = strtolower(str_replace($this->pre . DIRECTORY_SEPARATOR . 'Resource/', "", $dir));
+        print_r($namespace."\n");
         $filename = strtolower(str_replace(".html", "", $file));
         $this->active = $namespace . DIRECTORY_SEPARATOR . $filename;
         $this->files[$this->active] = ["namespace" => $namespace, "filename" => $filename, "namespaces" => [], "child" => []];
@@ -213,7 +209,6 @@ class compilephp
         }
         $r = "namespace " . str_replace("/", '\\', $namespace) . ";  " . implode("", array_unique($this->files[$this->active]["namespaces"])) . " class $filename { $childx" . ' public function __construct(public $data = [],public $attribute = [],public $child = ""' . $parampublic . '){ } ' . " public static function run(" . '$data = [] , $attribute = [] ,$child = "" ' . "$param) {" . 'return (new self($data,$attribute,$child' . $keyparm . '))->view();' . " } public function  view" . '(' . " ){?>  " . $file . " <?php } } \n \r\n \r";
         $this->files[$this->active]['body'] = str_replace(["\n", "\r\n", "\r", "\t", "    ", "   ", "                  "], "", $this->addthis($this->withoutthis($r)));
-        // echo $r;
         $this->active = "";
     }
 
@@ -229,16 +224,12 @@ class compilephp
 
     public function run()
     {
-        $dir = $this->pre . $this->dir;
+        $dir = $this->pre . DIRECTORY_SEPARATOR . $this->dir;
         $this->folderscan($dir);
-        // fwrite($this->y, $this->x);
         foreach ($this->files as $key => $value) {
-            $dir = __DIR__ . "/../../php/" . $value["namespace"];
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
-            }
-            $xx = fopen($dir . DIRECTORY_SEPARATOR . $value["filename"] . ".php", 'w');
-            fwrite($xx, "<?php " . $value['body']);
+            print_r($this->dir."   d\n" .  $this->destination . "\n");
+            print_r("oooooo\n" . $this->pre . $this->destination .DIRECTORY_SEPARATOR. $value["namespace"] . DIRECTORY_SEPARATOR . $value["filename"] . "\n.php\n");
+            index::createfile($this->pre  . $this->destination .DIRECTORY_SEPARATOR. $value["namespace"] . DIRECTORY_SEPARATOR . $value["filename"] . ".php", "<?php " . $value['body']);
         }
     }
 }
