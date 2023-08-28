@@ -173,7 +173,6 @@ class compilephp
     public function ComponentDir($dir, $file)
     {
         $namespace = strtolower(str_replace($this->pre . DIRECTORY_SEPARATOR . 'Resource/', "", $dir));
-        print_r($namespace."\n");
         $filename = strtolower(str_replace(".html", "", $file));
         $this->active = $namespace . DIRECTORY_SEPARATOR . $filename;
         $this->files[$this->active] = ["namespace" => $namespace, "filename" => $filename, "namespaces" => [], "child" => []];
@@ -227,8 +226,6 @@ class compilephp
         $dir = $this->pre . DIRECTORY_SEPARATOR . $this->dir;
         $this->folderscan($dir);
         foreach ($this->files as $key => $value) {
-            print_r($this->dir."   d\n" .  $this->destination . "\n");
-            print_r("oooooo\n" . $this->pre . $this->destination .DIRECTORY_SEPARATOR. $value["namespace"] . DIRECTORY_SEPARATOR . $value["filename"] . "\n.php\n");
             index::createfile($this->pre  . $this->destination .DIRECTORY_SEPARATOR. $value["namespace"] . DIRECTORY_SEPARATOR . $value["filename"] . ".php", "<?php " . $value['body']);
         }
     }
