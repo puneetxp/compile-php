@@ -41,6 +41,7 @@ class phpset
             $this->phproterc('ipublic', $GLOBALS['For']['ipublic']);
         }
         $this->phpenv($json);
+        symlink($_ENV["dir"]  . "/storage/public", $_ENV["dir"]  . "/php/storage");
         index::templatecopy("php", "php");
     }
     function phpmodel($table)
