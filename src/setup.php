@@ -139,7 +139,7 @@ class setup
       return $this;
    }
    public function template(){
-      new compilephp("View",$this->dir,$this->json_set);
+      new compilephp("View",$_ENV["dir"],$this->json_set);
       return $this;
    }
    public function migrate()
