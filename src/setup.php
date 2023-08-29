@@ -72,7 +72,7 @@ class setup
       }
       $this->roles = array_filter(array_unique($this->roles), fn ($role) => !($role == "*" || $role == "-"));
       for ($i = 0; $i < count($this->table); ++$i) {
-         if (count($this->table[$i]['relations']) > 0) {
+         if (isset($this->table[$i]['relations']) && count($this->table[$i]['relations']) > 0) {
             foreach ($this->table[$i]['relations'] as $key => $items) {
                for ($t = 0; $t < count($this->table); ++$t) {
                   if ($this->table[$t]['name'] == $key) {
