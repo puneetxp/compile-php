@@ -80,9 +80,9 @@ class mysql
     public $conn;
     public function __construct()
     {
-        $this->json_set = json_decode(file_get_contents(__DIR__ . '/../config.json'), TRUE);
-        $this->dir["structure"] = __DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('structure');
-        $this->dir["relations"] = __DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('relations');
+        $this->json_set = json_decode(file_get_contents($_ENV["dir"] . '/config.json'), TRUE);
+        $this->dir["structure"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('structure');
+        $this->dir["relations"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('relations');
         $conn = new mysqli($this->json_set["env"]["dbhost"], $this->json_set["env"]["dbuser"], $this->json_set["env"]["dbpwd"]);
         if ($this->json_set["fresh"] == true) {
             $conn->query("CREATE DATABASE IF NOT EXISTS " . $this->json_set["env"]["dbname"] . ";");
@@ -116,16 +116,16 @@ class mysql
     }
     public static function migraterun()
     {
-        $json_set = json_decode(file_get_contents(__DIR__ . '/../config.json'), TRUE);
-        $dir["structure"] = __DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('structure');
-        $dir["relations"] = __DIR__ . "/../database/" . ucfirst('mysql/') . ucfirst('relations');
+        $json_set = json_decode(file_get_contents($_ENV["dir"] . "/config.json"), TRUE);
+        $dir["structure"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('structure');
+        $dir["relations"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('relations');
         $conn = new mysqli($json_set["env"]["dbhost"], $json_set["env"]["dbuser"], $json_set["env"]["dbpwd"]);
         if ($json_set["fresh"] == true) {
             $conn->query("Drop DATABASE " . $json_set["env"]["dbname"] . ";");
         }
         $conn->multi_query("CREATE DATABASE IF NOT EXISTS " . $json_set["env"]["dbname"] . ";");
         $conn->select_db($json_set["env"]["dbname"]);
-        $x = file_get_contents(__DIR__ . "/../database/" . "Migration.sql");
+        $x = file_get_contents($_ENV["dir"] . "/database/" . "Migration.sql");
         $conn->query($x);
     }
 }

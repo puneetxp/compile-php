@@ -13,13 +13,13 @@ class denoset
         return 'import { response ,Session} from "../../../dep.ts";
 import { ' . ucfirst($table['name']) . '$ } from "../../Model/' . ucfirst($table['name']) . '.ts";
 export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
-            (in_array("all", $curd) ? '
+            (in_array("a", $curd) ? '
    static async all(session: Session): Promise<Response> {
       const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.all();
       return response.JSON( ' . $table['name'] . ' , session);
    }' : '') .
 
-            (in_array("where", $curd) ? '
+            (in_array("w", $curd) ? '
    static async where(session: Session) {
       const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.where(await session.req.json()).Item;
       return response.JSON( ' . $table['name'] . ' , session);
@@ -46,7 +46,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
       return response.JSON( ' . $table['name'] . ' , session);
    }' : '') .
 
-            (in_array("upsert", $curd) ? '
+            (in_array("p", $curd) ? '
    static async upsert(session: Session): Promise<Response> {
       const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.create(await session.req.json());
       return response.JSON( ' . $table['name'] . ' , session);
