@@ -252,7 +252,7 @@ class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {
         unset($route['controller']);
         $route = var_export($route, true);
         $route_controller = implode("\n", $controller);
-        $routx = index::fopen_dir($_ENV['dir'] . "/php/" . ucfirst('routes/pre/') . ucfirst($key) . '.php');
+        $routx = index::fopen_dir($_ENV['dir'] . "/php/" . ucfirst('routes/pre/api/') . ucfirst($key) . '.php');
         fwrite($routx, preg_replace("/'class' => '(.+?)'/", '"class" => ${1}::class', "<?php\n\n$route_controller \n\n$$key = $route;\n\n"));
     }
 
