@@ -132,7 +132,9 @@ class setup
       foreach ($this->table as $item) {
          $migration_sql .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($item['name']) . '.sql', 'TRUE');
          $migration_relation .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($item['name']) . '_relation.sql', 'TRUE');
-         $migration_insert .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql', 'TRUE');
+         if (is_file($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql')) {
+            $migration_insert .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql', 'TRUE');
+         }
       }
       $migration_sql .= 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");';
       file_put_contents($_ENV["dir"]  . '/database/structure.sql', ($migration_sql));
