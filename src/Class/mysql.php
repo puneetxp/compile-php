@@ -72,7 +72,7 @@ class mysql
             fwrite($mysql, $mysql_write);
         }
         foreach ($insert as $key => $item) {
-            $mysql_relation_file = index::createfile($_ENV['dir'] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($key) . '   .sql', $item);
+            $mysql_relation_file = index::createfile($_ENV['dir'] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($key) . '_insert.sql', $item);
         }
         echo "     Done\n";
     }
