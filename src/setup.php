@@ -125,7 +125,7 @@ class setup
       foreach ($this->route_use_array as $key => $value) {
          $this->route_use_multiple .= "use $key{" . implode(',', array_unique($value)) . "}; ";
       }
-      mysql::alltable($this->table.["roles"=>'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
+      mysql::alltable($this->table, ["roles"=>'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
       $migration_sql = '';
       $migration_relation = '';
       $migration_insert = '';
@@ -136,7 +136,6 @@ class setup
             $migration_insert .= file_get_contents($_ENV["dir"]  . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql', 'TRUE');
          }
       }
-      $migration_sql .= 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");';
       file_put_contents($_ENV["dir"]  . '/database/structure.sql', ($migration_sql));
       file_put_contents($_ENV["dir"]  . '/database/relation.sql', ($migration_relation));
       file_put_contents($_ENV["dir"]  . '/database/insert.sql', ($migration_insert));
