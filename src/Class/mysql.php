@@ -60,7 +60,7 @@ class mysql
             return $relation_key_sql . $relation_constrain_sql;
         }
     }
-    public static function alltable($tables)
+    public static function alltable($tables, $insert = [])
     {
         echo "building sql";
         foreach ($tables as $table) {
@@ -71,10 +71,13 @@ class mysql
             fwrite($mysql_relation_file, $mysql_relation);
             fwrite($mysql, $mysql_write);
         }
+        foreach ($insert as $key => $item) {
+            $mysql_relation_file = index::createfile($_ENV['dir'] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($key) . '   .sql', $item);
+        }
         echo "     Done\n";
     }
     public $dir = [
-        "structure" => [],   "relations" => []
+        "structure" => [],   "relations" => [], "insert" => []
     ];
     public $json_set = [];
     public $conn;
@@ -83,6 +86,7 @@ class mysql
         $this->json_set = json_decode(file_get_contents($_ENV["dir"] . '/config.json'), TRUE);
         $this->dir["structure"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('structure');
         $this->dir["relations"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('relations');
+        $this->dir["insert"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('insert');
         $conn = new mysqli($this->json_set["env"]["dbhost"], $this->json_set["env"]["dbuser"], $this->json_set["env"]["dbpwd"]);
         if ($this->json_set["fresh"] == true) {
             $conn->query("CREATE DATABASE IF NOT EXISTS " . $this->json_set["env"]["dbname"] . ";");
@@ -107,7 +111,7 @@ class mysql
                 $x = file_get_contents($file);
                 foreach (explode(";", $x) as $xx) {
                     if ($xx !== "") {
-                        $this->conn->multi_query($xx);
+                        $this->conn->query($xx);
                     }
                 }
             }
