@@ -125,7 +125,7 @@ class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {
     ' : '') .
             (in_array("p", $curd) ? '
     public static function upsert() {
-        return ' . ucfirst($table['name']) . '::upsert($_POST["' . $table['table'] . '"])->getsInserted();
+        return ' . ucfirst($table['name']) . '::upsert(json_decode($_POST["' . $table['table'] . '"]))->getsInserted();
     }
     ' : '') .
             (in_array("d", $curd) ? '
