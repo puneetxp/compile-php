@@ -61,6 +61,14 @@ class setup
       $this->write();
       return $this;
    }
+   public function add_table()
+   {
+      foreach (glob($_ENV["dir"] . "/database/Model/Additional/*.json") as $file) {
+         $j = json_decode(file_get_contents($file), TRUE);
+         $this->table[$j["name"]]["data"][] = $j["data"];
+      }
+      return $this;
+   }
    public function table_set()
    {
       foreach ($this->files as $key => $item) {
@@ -83,7 +91,12 @@ class setup
             }
          }
       }
-      $this->table = mysql::addattribute($this->table);
+      $x = [];
+      for ($i = 0; $i < count($this->table); ++$i) {
+         $x[$this->table[$i]['name']] = $this->table[$i];
+      }
+      $this->table = $x;
+      $this->add_table();
       echo "Tables Build\n";
       foreach ($this->table as $item) {
          isset($this->json_set['table'][$item['name']]) ? '' : $this->json_set['table'][$item['name']] = false;
@@ -125,7 +138,7 @@ class setup
       foreach ($this->route_use_array as $key => $value) {
          $this->route_use_multiple .= "use $key{" . implode(',', array_unique($value)) . "}; ";
       }
-      mysql::alltable($this->table, ["roles"=>'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
+      mysql::alltable($this->table, ["roles" => 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
       $migration_sql = '';
       $migration_relation = '';
       $migration_insert = '';
@@ -139,12 +152,13 @@ class setup
       file_put_contents($_ENV["dir"]  . '/database/structure.sql', ($migration_sql));
       file_put_contents($_ENV["dir"]  . '/database/relation.sql', ($migration_relation));
       file_put_contents($_ENV["dir"]  . '/database/insert.sql', ($migration_insert));
-      file_put_contents($_ENV["dir"]  . '/database/Migration.sql', ($migration_sql . ' ' . $migration_relation.' ' . $migration_insert));
+      file_put_contents($_ENV["dir"]  . '/database/Migration.sql', ($migration_sql . ' ' . $migration_relation . ' ' . $migration_insert));
       file_put_contents($_ENV["dir"]  . '/config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
       return $this;
    }
-   public function template(){
-      new compilephp("View",$_ENV["dir"],$this->json_set);
+   public function template()
+   {
+      new compilephp("View", $_ENV["dir"], $this->json_set);
       return $this;
    }
    public function migrate()
