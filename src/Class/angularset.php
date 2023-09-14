@@ -301,7 +301,7 @@ export class $Name" . "Service {
   upsert(_upsert: any) {
     return this.form.put<" . $Name . "[]>(this.url, _upsert).subscribe(i => this.store.dispatch(new Upsert" . $Name . "(i)));
   }
-   del(id: number) {
+  del(id: number) {
     return this.form.delete<number>(this.url + '/' + id).subscribe(i => this.store.dispatch(new Delete" . $Name . "(i)));
   }
 }";
