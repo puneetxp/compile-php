@@ -231,6 +231,7 @@ export class $Name" . "Service {
   @Select() " . $name . "$!: Observable<" . $Name . "StateModel>;
   constructor(private AsyncPipe: AsyncPipe, private indexdb: IndexedDBService, private store: Store, private form: FormDataService) { }
   private model = '" . $name . "';
+  private table = '" . $names . "';
   prefix(prefix: string) {
     this.url = '/api/' + prefix + '/' + this.model
     return this;
@@ -299,7 +300,7 @@ export class $Name" . "Service {
     return this.form.patch<" . $Name . ">(this.url + '/' + id, _update).subscribe(i => this.store.dispatch(new Edit" . $Name . "(i)));
   }
   upsert(_upsert: any) {
-    return this.form.put<" . $Name . "[]>(this.url, _upsert).subscribe(i => this.store.dispatch(new Upsert" . $Name . "(i)));
+    _upsert.length > 0 && this.form.put<" . $Name . "[]>(this.url, { [this.table]: _upsert }).subscribe(i => this.store.dispatch(new Upsert" . $Name . "(i)));
   }
   del(id: number) {
     return this.form.delete<number>(this.url + '/' + id).subscribe(i => this.store.dispatch(new Delete" . $Name . "(i)));

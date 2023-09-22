@@ -63,11 +63,26 @@ class setup
    }
    public function add_table()
    {
+      $j = [];
       foreach (glob($_ENV["dir"] . "/database/Model/Additional/*.json") as $file) {
-         $j = json_decode(file_get_contents($file), TRUE);
-         $this->table[$j["name"]]["data"][] = $j["data"];
+         $j[] = json_decode(file_get_contents($file), TRUE);
+      }
+      $x = mysql::addattribute($j);
+      foreach ($x as $j) {
+         index::createfile($_ENV['dir'] . "/database/" . ucfirst('mysql/') . ucfirst('alter/') . ucfirst($j["name"]) . '_alter.sql', mysql::tablealter($j));
+         foreach ($j["data"] as $item) {
+            $this->table[$j["name"]]["data"][] = $item;
+         }
       }
       return $this;
+   }
+   public function resetTable()
+   {
+      $x = [];
+      for ($i = 0; $i < count($this->table); ++$i) {
+         $x[$this->table[$i]['name']] = $this->table[$i];
+      }
+      $this->table = $x;
    }
    public function table_set()
    {
@@ -92,10 +107,9 @@ class setup
          }
       }
       $x = [];
-      for ($i = 0; $i < count($this->table); ++$i) {
-         $x[$this->table[$i]['name']] = $this->table[$i];
-      }
-      $this->table = $x;
+      $this->resetTable();
+      $this->table = mysql::addattribute(array_values($this->table));
+      $this->resetTable();
       $this->add_table();
       echo "Tables Build\n";
       foreach ($this->table as $item) {
@@ -164,6 +178,11 @@ class setup
    public function migrate()
    {
       (new mysql())->migrate();
+      return $this;
+   }
+   public function migratealter()
+   {
+      mysql::migrateAlter();
       return $this;
    }
 }

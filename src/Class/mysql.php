@@ -21,6 +21,17 @@ class mysql
             ), $item['data'])]
         ), $tables);
     }
+    public static function tablealter($table)
+    {
+        return 'ALTER TABLE ' . $table['table'] . ' ' .
+            implode(",", array_map(
+                fn ($item) =>
+                "ADD COLUMN IF NOT EXISTS `" . $item['name'] . "`" . ' ' .
+                    $item['mysql_data'] . ' ' .
+                    $item['sql_attribute'] . " ",
+                $table['data']
+            )) . ';';
+    }
     public static function table($table)
     {
         return 'CREATE TABLE ' . $table['table'] . '(' .
@@ -118,18 +129,22 @@ class mysql
         }
         echo "     Done\n";
     }
-    public static function migraterun()
+    public static function migrateAlter()
     {
         $json_set = json_decode(file_get_contents($_ENV["dir"] . "/config.json"), TRUE);
-        $dir["structure"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('structure');
-        $dir["relations"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('relations');
+        $dir["alter"] = $_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('alter');
         $conn = new mysqli($json_set["env"]["dbhost"], $json_set["env"]["dbuser"], $json_set["env"]["dbpwd"]);
-        if ($json_set["fresh"] == true) {
-            $conn->query("Drop DATABASE " . $json_set["env"]["dbname"] . ";");
-        }
-        $conn->multi_query("CREATE DATABASE IF NOT EXISTS " . $json_set["env"]["dbname"] . ";");
         $conn->select_db($json_set["env"]["dbname"]);
-        $x = file_get_contents($_ENV["dir"] . "/database/" . "Migration.sql");
-        $conn->query($x);
+        echo "migrate Alter sql\n";
+        foreach (index::scanfullfolder($dir["alter"]) as $file) {
+            echo $file . "\n";
+            $x = file_get_contents($file);
+            foreach (explode(";", $x) as $xx) {
+                if ($xx !== "") {
+                    $conn->query($xx);
+                }
+            }
+        }
+        echo "     Done\n";
     }
 }
