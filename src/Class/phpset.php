@@ -22,8 +22,8 @@ class phpset
             if (isset($item['crud']['islogin'])) {
                 $this->phpwritec(item: $item, value: $item['crud']['islogin'], key: 'islogin', role: "");
             }
-            if (isset($item['crud']['public'])) {
-                $this->phpwritec(item: $item, value: $item['crud']['public'], key: 'public', role: "");
+            if (isset($item['crud']['ipublic'])) {
+                $this->phpwritec(item: $item, value: $item['crud']['ipublic'], key: 'ipublic', role: "");
             }
         }
         if (isset($GLOBALS['For']['roles'])) {
@@ -109,7 +109,7 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         }
         return ' . ucfirst($table['name']) . '::all();
     }' : '') .
-    (in_array("w", $curd) ? '
+            (in_array("w", $curd) ? '
 
     public static function where() {
         return ' . ucfirst($table['name']) . '::where(json_decode($_POST["' . $table['table'] . '"]))->getsInserted();
@@ -231,7 +231,7 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         $json_set = json_decode(file_get_contents($_ENV['dir'] . '/config.json'), TRUE);
         if ($role == '') {
             if (!isset($GLOBALS['For'][$key])) {
-                $GLOBALS['For'][$key] = ['path' => $key, "controller" => [], 'child' => []];
+                $GLOBALS['For'][$key] = ['path' => "/" . $key, "controller" => [], 'child' => []];
             }
             $GLOBALS['For'][$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
             $GLOBALS['For'][$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($key) . '\\' . ucfirst($key) . ucfirst($item['name']) . 'Controller;';
