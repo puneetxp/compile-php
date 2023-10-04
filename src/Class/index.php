@@ -26,7 +26,7 @@ class index
 
     static function php_w($data)
     {
-        return '<?php ' . $data;
+        return "<?php\n" . $data;
     }
 
     static function class_wrapper($name, $data)
@@ -111,16 +111,18 @@ class index
     public function addional_default()
     {
         isset($this->rawtable['enable']) ?
-            $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'TINYINT(1)', 'datatype' => 'number', 'default' => 1, 'sql_attribute' => 'DEFAULT ' . $this->rawtable['enable'] . ' NOT NULL '] : '';
+            $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'TINYINT(1)', 'datatype' => 'number', 'default' => 1] : '';
         if (isset($this->rawtable["additional"])) {
-            switch ($this->rawtable->additional) {
-                case "seo":
-                    $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NOT NULL '];
-                    break;
-                case "slug":
-                    $this->table["data"][] = ['name' => 'title', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NULL '];
-                    $this->table["data"][] = ['name' => 'seo_description', 'mysql_data' => 'longtext', 'datatype' => 'string', 'sql_attribute' => ' NULL '];
-                    break;
+            foreach ($this->rawtable["additional"] as $item) {
+                switch ($item) {
+                    case "slug":
+                        $this->table["data"][] = ['name' => 'slug', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'sql_attribute' => ' NOT NULL '];
+                        break;
+                    case "seo":
+                        $this->table["data"][] = ['name' => 'title', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'default' => 'NULL'];
+                        $this->table["data"][] = ['name' => 'seo_description', 'mysql_data' => 'longtext', 'datatype' => 'string', 'default' => 'NULL'];
+                        break;
+                }
             }
         }
         return $this;
