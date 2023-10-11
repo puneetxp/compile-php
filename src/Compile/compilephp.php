@@ -117,13 +117,15 @@ class compilephp
             print_r($match);
             return "";
         }, $file);*/
-        return  preg_replace_callback("/(<[\w].+? )(.+?)((?:\/|)(?<!this-)>)/m", function ($html) {
+
+        $this->files[$this->active]['body'] = str_replace(["\n", "\r\n", "\r", "\t", "    ", "   ", "                  "], "", preg_replace_callback("/(<[\w].+? )(.+?)((?:\/|)(?<!this-)>)/m", function ($html) {
             $attribute = "/( |\"|\')[\:]([\w|data-]+)=?((?:.(?![\"\']?\s+(?:\S+)=|[\"\']$))+.[\"\']?)/m";
             return $html[1] . preg_replace_callback($attribute, function ($match) {
                 return $match[1] . $match[2] . "=<?=" . $match[3] . "?>";
             }, $html[2]) . $html[3];
             return $html[0];
-        }, $file);
+        }, $file));
+        $this->active = "";
         //return $file;
     }
 
@@ -236,9 +238,7 @@ class compilephp
             $childx = "";
         }
         $r = "namespace " . str_replace("/", '\\', $namespace) . ";  " . implode("", array_unique($this->files[$this->active]["namespaces"])) . " class $filename { $childx" . ' public function __construct(public $data = [],public $attribute = [],public $child = ""' . $parampublic . '){ } ' . " public static function run(" . '$data = [] , $attribute = [] ,$child = "" ' . "$param) {" . 'return (new self($data,$attribute,$child' . $keyparm . '))->view();' . " } public function  view" . '(' . " ){?>  " . $file . " <?php } } \n \r\n \r";
-        $this->files[$this->active]['body'] = $this->data_attribute($r);
-        $this->files[$this->active]['body'] = str_replace(["\n", "\r\n", "\r", "\t", "    ", "   ", "                  "], "", $r);
-        $this->active = "";
+        $this->data_attribute($r);
     }
 
     public function run()
