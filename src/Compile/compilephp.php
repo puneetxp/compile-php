@@ -11,6 +11,7 @@ class compilephp
     public $x = [];
     public $config;
     public $t_pattern = "<t-(.+?)(((?<!this-)(\/>|>)(((([\s\S]*?|)(<\/(t-.*)(?<!this-)>)))|()))|(( (.+?)\/(?<!this-)>))|(( (.+?)(?<!this-)>)((([\s\S]*?|)(<\/(t-.*)>)))))";
+    public $html_pattern = "<t-(.+?)(((?<!this-)(\/>|>)(((([\s\S]*?|)(<\/(t-.*)(?<!this-)>)))|()))|(( (.+?)\/(?<!this-)>))|(( (.+?)(?<!this-)>)((([\s\S]*?|)(<\/(t-.*)>)))))";
     //public $t_pattern = "<t-(.+?)(((\/>|>)(((([\s\S]*?|)(<\/(t-.*)>)))|()))|(( (.+?)\/>))|(( (.+?)>)((([\s\S]*?|)(<\/(t-.*)>)))))\b(?<!this->)";
     public $foreach_pattern = "[@]foreach\((.+) i (.+)\)([\s\S]*?)[@]endforeach";
     public $files = [];
@@ -107,6 +108,38 @@ class compilephp
         return  "attribute: " . "[" . implode(",", $a) . "]" . (count($n) > 0 ? ", " . implode(",", $n) : '');
     }
 
+    public function data_attribute($file)
+    {
+        //$attribute = "/[\:]([\w|data-]+)=((?:.(?![\"\']?\s+(?:\S+)=|[\"\']$))+.)[\"\']?(?:(?:\/)(?:\>))/m";
+        //$attribute = "/([\:][\w|data-]+)=((?:.(?![\"\']?\s+(?:\S+)=|[\"\']$))+.)[\"\']?/m";
+
+        /* preg_replace_callback($attribute, function ($match) {
+            print_r($match);
+            return "";
+        }, $file);*/
+        return  preg_replace_callback("/(<[\w].+? )(.+?)((?:\/|)(?<!this-)>)/m", function ($html) {
+            $attribute = "/( |\"|\')[\:]([\w|data-]+)=?((?:.(?![\"\']?\s+(?:\S+)=|[\"\']$))+.[\"\']?)/m";
+            return $html[1] . preg_replace_callback($attribute, function ($match) {
+                return $match[1] . $match[2] . "=<?=" . $match[3] . "?>";
+            }, $html[2]) . $html[3];
+            return $html[0];
+        }, $file);
+        //return $file;
+    }
+
+    public function find(string $file): string
+    {
+        $find_pattern = "@find\((.*)\:\:([\s\S]*?) i ([\s\S]*?)\:\:(.+)\)([\s\S]*?)@endfind";
+        $file = preg_replace_callback(
+            "/" . $find_pattern . "/m",
+            function ($match) {
+                //print_r($match);
+                return "<?= $match[3]" . '[array_search(' . $match[1] . '["' . $match[2] . '"], array_column(' . $match[3] . ',"' . $match[4] . '" ))]' . $match[5] . " ?>";
+            },
+            $file
+        );
+        return $file;
+    }
     /*public function repforeach($__pattern, $set, $n, $x)
     {
         return preg_replace_callback(
@@ -177,10 +210,12 @@ class compilephp
         preg_match_all("/[@]props\((\{[\s\S]*?\})\)/m", $file, $parameter, PREG_SET_ORDER);
         $file = preg_replace("/[@]props\((\{[\s\S]*?\})\)/m", "", $file);
         $file = preg_replace("/[$]{1,1}+([a-zA-Z\d_-]+)?/m", '$this->' . "$1", $file);
-        $file = preg_replace("/\{\{(.+)?\}\}/m", '<?= ' . "$1" . ' ?>', $file);
+        //$foreach_pattern = "[@]foreach\((.+) i (.+)\)([\s\S]*)[@]endforeach";
+        $file = preg_replace("/\{\{([\s\S]*?)\}\}/m", '<?= ' . "$1" . ' ?>', $file);
         /*$file = preg_replace("/\{(.+)?\}/m", '<?= ' . "$1" . ' ?>', $file);*/
         $file = $this->conditioncheck($file);
         $file = $this->foreachnested($file);
+        $file = $this->find($file);
         $file = $this->compile_Tfunc($file);
         $param = "";
         $keyparm = "";
@@ -196,12 +231,12 @@ class compilephp
         }
         if (count($this->files[$this->active]['child']) > 0) {
             $childx = implode("", (array_map(fn ($value, $key) => "public function child$key() {
-              ob_start(); ?>" . "$value" . "<?php  return ob_get_clean(); }", array_values($this->files[$this->active]['child']), array_keys($this->files[$this->active]['child']))));
+            ob_start(); ?>" . "$value" . "<?php  return ob_get_clean(); }", array_values($this->files[$this->active]['child']), array_keys($this->files[$this->active]['child']))));
         } else {
             $childx = "";
         }
         $r = "namespace " . str_replace("/", '\\', $namespace) . ";  " . implode("", array_unique($this->files[$this->active]["namespaces"])) . " class $filename { $childx" . ' public function __construct(public $data = [],public $attribute = [],public $child = ""' . $parampublic . '){ } ' . " public static function run(" . '$data = [] , $attribute = [] ,$child = "" ' . "$param) {" . 'return (new self($data,$attribute,$child' . $keyparm . '))->view();' . " } public function  view" . '(' . " ){?>  " . $file . " <?php } } \n \r\n \r";
-        $this->files[$this->active]['body'] = $r;
+        $this->files[$this->active]['body'] = $this->data_attribute($r);
         $this->files[$this->active]['body'] = str_replace(["\n", "\r\n", "\r", "\t", "    ", "   ", "                  "], "", $r);
         $this->active = "";
     }
