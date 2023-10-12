@@ -67,12 +67,13 @@ export class RunService {
     }
     $angular_config = json_decode(file_get_contents($_ENV["dir"]  . '/angular/angular.json'), TRUE);
 
-    if (isset($json["angular"]["outputPath"])) {
-      $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $json["angular"]["outputPath"];
+    
+    if (isset($this->json["angular"]["outputPath"])) {
+      $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $this->json["angular"]["outputPath"];
     }
-    if (isset($json["angular"]["assets"])) {
-      $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$json["angular"]["assets"]]);
-      foreach ($json["angular"]["assets"] as $value) {
+    if (isset($this->json["angular"]["assets"])) {
+      $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$this->json["angular"]["assets"]]);
+      foreach ($this->json["angular"]["assets"] as $value) {
         if ($value == "src/storage") {
           symlink($_ENV["dir"]  . "/storage/public", $_ENV["dir"]  . "/angular/src/storage");
         } else {

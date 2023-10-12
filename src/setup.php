@@ -40,12 +40,10 @@ class setup
       //php
       if (in_array('php', $this->json_set['back-end'])) {
          $this->php_set();
-         echo "PHP Build\n";
       }
       //angular
       if (in_array('angular', $this->json_set['front-end'])) {
          $this->angular_set();
-         echo "Angular Build\n";
       }
       //solid
       if (in_array('solidjs', $this->json_set['front-end'])) {
