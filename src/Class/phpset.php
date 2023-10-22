@@ -2,11 +2,11 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class phpset
-{
-    public function __construct(public $table, public $json)
-    {
-        $GLOBALS['For'] = [];
+class phpset {
+
+    private $routes = [];
+
+    public function __construct(public $table, public $json) {
         foreach ($table as $item) {
             $model = index::fopen_dir($_ENV['dir'] . "/php/App/" . ucfirst('model/') . ucfirst($item['name']) . '.php');
             $model_write = $this->phpModel($item);
@@ -26,27 +26,27 @@ class phpset
                 $this->phpwritec(item: $item, value: $item['crud']['ipublic'], key: 'ipublic', role: "");
             }
         }
-        if (isset($GLOBALS['For']['roles'])) {
-            foreach ($GLOBALS['For']['roles'] as $key => $value) {
+        if (isset($this->routes['roles'])) {
+            foreach ($this->routes['roles'] as $key => $value) {
                 if ($key != "isuper" && $key != "islogin" && $key != "ipublic") {
                     $this->phproterc($key, $value, "i");
                 }
             }
         }
-        if (isset($GLOBALS['For']['isuper'])) {
-            $this->phproterc('isisuper', $GLOBALS['For']['isuper']);
+        if (isset($this->routes['isuper'])) {
+            $this->phproterc('isuper', $this->routes['isuper']);
         }
-        if (isset($GLOBALS['For']['islogin'])) {
-            $this->phproterc('islogin', $GLOBALS['For']['islogin']);
+        if (isset($this->routes['islogin'])) {
+            $this->phproterc('islogin', $this->routes['islogin']);
         }
-        if (isset($GLOBALS['For']['ipublic'])) {
-            $this->phproterc('ipublic', $GLOBALS['For']['ipublic']);
+        if (isset($this->routes['ipublic'])) {
+            $this->phproterc('ipublic', $this->routes['ipublic']);
         }
         $this->phpenv($json);
         index::templatecopy("php", "php");
     }
-    function phpmodel($table)
-    {
+
+    function phpmodel($table) {
         $relations_key = array_keys($table['relations']);
         $relations = '';
         if (count($relations_key) > 0) {
@@ -67,7 +67,7 @@ class phpset
                         $relations .= ',';
                     }
                     $relations .= "'$id'" . '=>'
-                        . "'$value'";
+                            . "'$value'";
                     ++$f;
                 }
                 $relations .= ",'callback'" . '=>' . ucfirst($key) . "::class" . ']';
@@ -75,8 +75,8 @@ class phpset
             }
             $relations .= ']';
         }
-        $nullable = array_column(array_filter($table["data"], fn ($r) => !(isset($r["sql_attribute"]) && (str_contains($r['sql_attribute'], 'NOT NULL') || str_contains($r['sql_attribute'], 'PRIMARY')))), "name");
-        $fillable = array_column(array_filter($table["data"], fn ($r) => !isset($r["fillable"])), "name");
+        $nullable = array_column(array_filter($table["data"], fn($r) => !(isset($r["sql_attribute"]) && (str_contains($r['sql_attribute'], 'NOT NULL') || str_contains($r['sql_attribute'], 'PRIMARY')))), "name");
+        $fillable = array_column(array_filter($table["data"], fn($r) => !isset($r["fillable"])), "name");
         return index::php_w('
 namespace App\Model;
 
@@ -92,8 +92,8 @@ class ' . ucfirst($table['name']) . ' extends Model {
     protected $fillable = ' . json_encode($fillable) . ';
 }');
     }
-    function phpdefaultController(array $table, array $curd, string $key = '', string $prefix = "")
-    {
+
+    function phpdefaultController(array $table, array $curd, string $key = '', string $prefix = "") {
         return index::php_w('
 namespace App\Controller\\' . ucfirst($prefix . $key) . ';
 
@@ -109,33 +109,33 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         }
         return ' . ucfirst($table['name']) . '::all();
     }' : '') .
-            (in_array("w", $curd) ? '
+                        (in_array("w", $curd) ? '
 
     public static function where() {
         return ' . ucfirst($table['name']) . '::where(json_decode($_POST["' . $table['table'] . '"]))->getsInserted();
     }' : '') .
-            (in_array("r", $curd) ? '
+                        (in_array("r", $curd) ? '
 
     public static function show($id) {
         return ' . ucfirst($table['name']) . '::find($id);
     }' : '') .
-            (in_array("c", $curd) ? '
+                        (in_array("c", $curd) ? '
 
     public static function store() {
         return ' . ucfirst($table['name']) . '::create($_POST)->getInserted();
     }' : '') .
-            (in_array("u", $curd) ? '
+                        (in_array("u", $curd) ? '
 
     public static function update($id) {
         ' . ucfirst($table['name']) . '::where(["id" => [$id]])->update($_POST);
         return ' . ucfirst($table['name']) . '::find($id);
     }' : '') .
-            (in_array("p", $curd) ? '
+                        (in_array("p", $curd) ? '
 
     public static function upsert() {
         return ' . ucfirst($table['name']) . '::upsert(json_decode($_POST["' . $table['table'] . '"]))->getsInserted();
     }' : '') .
-            (in_array("d", $curd) ? '
+                        (in_array("d", $curd) ? '
 
     public static function delete($id) {
         ' . ucfirst($table['name']) . '::delete(["id" => $id]);
@@ -144,8 +144,8 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
 }
 ');
     }
-    function phpphotoController(array $table, array $curd, string $key = '', string $prefix = "")
-    {
+
+    function phpphotoController(array $table, array $curd, string $key = '', string $prefix = "") {
         return index::php_w('
 namespace App\Controller\\' . ucfirst($prefix . $key) . ';
 
@@ -166,25 +166,25 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         }
         return ' . ucfirst($table['name']) . '::all();
     }' : '') .
-            (in_array("r", $curd) ? '
+                        (in_array("r", $curd) ? '
 
     public static function show($id) {
         return ' . ucfirst($table['name']) . '::find($id);
     }' : '') .
-            (in_array("c", $curd) ? '
+                        (in_array("c", $curd) ? '
 
     public static function store() {
         $file = FileAct::init($_FILES[' . '"photo"' . '])->public("")->fileupload($_FILES[' . '"photo"' . '], $_POST[' . '"name"' . ']);
         return ' . ucfirst($table['name']) . '::create($file)->getInserted();
     }' : '') .
-            (in_array("u", $curd) ? '
+                        (in_array("u", $curd) ? '
 
     public static function update($id) {
         $file = FileAct::init($_FILES[' . '"photo"' . '])->public("")->fileupload($_FILES[' . '"photo"' . '], $_POST[' . '"name"' . ']);
         Photo::where(["id" => [$id]])->update($file);
         return ' . ucfirst($table['name']) . '::find($id);
     }' : '') .
-            (in_array("p", $curd) ? '
+                        (in_array("p", $curd) ? '
 
     public static function upsert() {
         if (isset($_POST["' . 'dir' . '"])) {
@@ -192,15 +192,15 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
                 $files = FileAct::init($_FILES["' . 'photo' . '"])->public($_POST["' . 'dir' . '"])->ups()->files;
                 ' . (isset($table['type']['version']) && count($table['type']['version']) > 0 ? ('foreach ($files as $file) {
                     if (getimagesize($file["path"])) {
-                    ' . (implode('', array_map(fn ($key, $value) => '    Img::webpImage(source: $file[' . '"path"' . '], destination: $file[' . '"dir"' . '] . DIRECTORY_SEPARATOR . "' . $key . '/" . $file[' . '"name"' . '], x: ' . $value['width'] . ', quality: ' . $value['quality'] . ');
-                    ', array_keys($table['type']['version']), array_values($table['type']['version']))))  . '}
+                    ' . (implode('', array_map(fn($key, $value) => '    Img::webpImage(source: $file[' . '"path"' . '], destination: $file[' . '"dir"' . '] . DIRECTORY_SEPARATOR . "' . $key . '/" . $file[' . '"name"' . '], x: ' . $value['width'] . ', quality: ' . $value['quality'] . ');
+                    ', array_keys($table['type']['version']), array_values($table['type']['version'])))) . '}
                 }') : "") . '
                 return Photo::upsert($files)->getsInserted();
             }
         }
         return Response::bad_req("It seem you Missed Directory");
     }' : '') .
-            (in_array("d", $curd) ? '
+                        (in_array("d", $curd) ? '
 
     public static function delete($id) {
         $' . $table['name'] . ' = ' . ucfirst($table['name']) . '::find($id)->array();
@@ -214,10 +214,10 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
 ');
     }
 
-    function phpController(array $table, array $curd, string $key = '', string $prefix = "")
-    {
+    function phpController(array $table, array $curd, string $key = '', string $prefix = "") {
         if (isset($table["type"])) {
             if ($table["type"]['name'] == "file") {
+
             } elseif ($table["type"]['name'] == "photo") {
                 return $this->phpphotoController($table, $curd, $key, $prefix);
             }
@@ -226,26 +226,25 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         }
     }
 
-    function phpwritec($item, $value, $key, $role = '', $prefix = '')
-    {
+    function phpwritec($item, $value, $key, $role = '', $prefix = '') {
         $json_set = json_decode(file_get_contents($_ENV['dir'] . '/config.json'), TRUE);
-        if ($role == '') {
-            if (!isset($GLOBALS['For'][$key])) {
-                $GLOBALS['For'][$key] = ['path' => "/" . $key, "controller" => [], 'child' => []];
+        if ($prefix == "") {
+            if (!isset($this->routes[$key])) {
+                $this->routes[$key] = ['path' => "/" . $key, "controller" => [], 'child' => []];
             }
-            $GLOBALS['For'][$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
-            $GLOBALS['For'][$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($key) . '\\' . ucfirst($key) . ucfirst($item['name']) . 'Controller;';
+            $this->routes[$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
+            $this->routes[$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($key) . '\\' . ucfirst($key) . ucfirst($item['name']) . 'Controller;';
         } else {
-            if (!isset($GLOBALS['For']['roles'])) {
-                $GLOBALS['For']['roles'] = [];
+            if (!isset($this->routes['roles'])) {
+                $this->routes['roles'] = [];
             }
-            if (!isset($GLOBALS['For']['roles'][$key])) {
-                $GLOBALS['For']['roles'][$key] = ["path" => '/' . $key];
-                $GLOBALS['For']["roles"][$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($prefix . $key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
-                $GLOBALS['For']["roles"][$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($prefix . $key) . '\\' . ucfirst($prefix . $key) . ucfirst($item['name']) . 'Controller;';
+            if (!isset($this->routes['roles'][$key])) {
+                $this->routes['roles'][$key] = ["path" => '/' . $key];
+                $this->routes["roles"][$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($prefix . $key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
+                $this->routes["roles"][$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($prefix . $key) . '\\' . ucfirst($prefix . $key) . ucfirst($item['name']) . 'Controller;';
             } else {
-                $GLOBALS['For']["roles"][$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($prefix . $key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
-                $GLOBALS['For']["roles"][$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($prefix . $key) . '\\' . ucfirst($prefix . $key) . ucfirst($item['name']) . 'Controller;';
+                $this->routes["roles"][$key]["child"][] = ['path' => "/" . $item['name'], "crud" => ["class" => ucfirst($prefix . $key) . ucfirst($item['name']) . ucfirst("controller"), "crud" => $value]];
+                $this->routes["roles"][$key]["controller"][] = 'use App\\' . ucfirst('controller\\') . ucfirst($prefix . $key) . '\\' . ucfirst($prefix . $key) . ucfirst($item['name']) . 'Controller;';
             }
         }
         if (!isset($json_set["table"][$item["name"]])) {
@@ -255,8 +254,7 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         }
     }
 
-    function phproterc($key, $route, $prefix = "")
-    {
+    function phproterc($key, $route, $prefix = "") {
         if ($key != "ipublic" && $key != "islogin") {
             $route['roles'] = [$key];
         }
@@ -268,12 +266,12 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
         fwrite($routx, preg_replace("/'class' => '(.+?)'/", '"class" => ${1}::class', "<?php\n\n$route_controller \n\n$" . $prefix . "$key = $route;\n\n"));
     }
 
-    function phpenv($json)
-    {
+    function phpenv($json) {
         $env = index::fopen_dir($_ENV['dir'] . "/php/env.php");
         fwrite($env, index::php_wrapper(implode("", array_map(function ($key, $value) {
-            return "
+                                    return "
       define('$key', " . json_encode($value) . ");";
-        }, array_keys($json["env"]), $json["env"]))));
+                                }, array_keys($json["env"]), $json["env"]))));
     }
 }
+
