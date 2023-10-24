@@ -93,7 +93,7 @@ class compilephp
             $json = "/^\[.+?/";
             if (preg_match("/[:]([a-zA-Z\d?:>\-_\$+]{1,})/", $i[1], $attribute)) {
                 if (preg_match($json, $i[2])) {
-                    $n[] = $attribute[1] . ": " . var_export($i[2], true);
+                    $n[] = $attribute[1] . ": " . var_export(json_decode($i[2]), true);
                 } else {
                     $n[] = str_replace(":", "", $i[1]) . ": " . str_replace($i[1] . "=", "", $i[0]);
                 }
@@ -227,9 +227,9 @@ class compilephp
             $keyparm = "," . implode(",", (array_map(fn ($key) => '$' . "$key", array_keys($r))));
             $parampublic = "," . implode(",", (array_map(fn ($value, $key) =>
             'public $' . "$key = " .
-                (is_array($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
+                (is_array($value) || is_object($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
             $param = "," . implode(",", (array_map(fn ($value, $key) => '$' . "$key = " .
-                (is_array($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
+                (is_array($value) || is_object($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
         }
         if (count($this->files[$this->active]['child']) > 0) {
             $childx = implode("", (array_map(fn ($value, $key) => "public function child$key() {
