@@ -148,31 +148,16 @@ class compilephp {
       1
       );
       } */
-    public function functioncheck($file){
-        $file = preg_replace_callback("/[@]auth\(\)/m", fn() => "  <?php  session_status() === PHP_SESSION_ACTIVE && isset(".$_SESSION['user_id'].")){ ?> ", $file);
-        $file = preg_replace_callback("/[@]elseif\((.*?)\)/m", fn($match) => "<?php }elseif(" . $match[1] . "){ ?>", $file);
-        $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
-        $file = preg_replace("/[@]endif/m", "<?php } ?>", $file);
-        return $file;
-
-    }
-    public function isset($file) {
-        $file = preg_replace_callback("/[@]isset\((.*?)\)[@]/m", fn($match) => "  <?= $match[1] ?? '' ?> ", $file);
-        return $file;
-    }
-
-    public function issetcheck($file) {
-        $file = preg_replace_callback("/[@]isset\((.*?)\)/m", fn($match) => '  <?php if(isset(' . $match[1] . ')) { ?> ', $file);
-        $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
-        $file = preg_replace("/[@]endisset/m", "<?php } ?>", $file);
-        return $file;
-    }
 
     public function conditioncheck($file) {
+        $file = preg_replace_callback("/[@]isset\((.*?)\)[@]/m", fn($match) => "  <?= $match[1] ?? '' ?> ", $file);
+        $file = preg_replace_callback("/[@]isset\((.*?)\)/m", fn($match) => '  <?php if(isset(' . $match[1] . ')) { ?> ', $file);
+        $file = preg_replace_callback("/[@]auth\(\)/m", fn() => "  <?php  session_status() === PHP_SESSION_ACTIVE && isset(".$_SESSION['user_id'].")){ ?> ", $file);
         $file = preg_replace_callback("/[@]if\((.*?)\)/m", fn($match) => '  <?php if(' . $match[1] . ') { ?> ', $file);
         $file = preg_replace_callback("/[@]elseif\((.*?)\)/m", fn($match) => "<?php }elseif(" . $match[1] . "){ ?>", $file);
         $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
         $file = preg_replace("/[@]endif/m", "<?php } ?>", $file);
+        $file = preg_replace("/[@]endisset/m", "<?php } ?>", $file);
         return $file;
     }
 
@@ -230,8 +215,6 @@ class compilephp {
         /* $file = preg_replace("/\{(.+)?\}/m", '<?= ' . "$1" . ' ?>', $file); */
         $file = $this->conditioncheck($file);
         $file = $this->foreachnested($file);
-        $file = $this->issetcheck($file);
-        $file = $this->isset($file);
         $file = $this->find($file);
         $file = $this->compile_Tfunc($file);
         $param = "";
