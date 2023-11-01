@@ -28,9 +28,9 @@ class compilephp {
         if (is_dir($dir)) {
             foreach (scandir($dir) as $file) {
                 if ($file == '.') {
-                    
+
                 } elseif ($file == "..") {
-                    
+
                 } elseif (is_file("$dir/$file")) {
                     $this->ComponentDir($dir, $file);
                 } elseif (is_dir("$dir/$file")) {
@@ -148,7 +148,14 @@ class compilephp {
       1
       );
       } */
+    public function functioncheck($file){
+        $file = preg_replace_callback("/[@]auth\(\)/m", fn() => "  <?php  session_status() === PHP_SESSION_ACTIVE && isset(".$_SESSION['user_id'].")){ ?> ", $file);
+        $file = preg_replace_callback("/[@]elseif\((.*?)\)/m", fn($match) => "<?php }elseif(" . $match[1] . "){ ?>", $file);
+        $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
+        $file = preg_replace("/[@]endif/m", "<?php } ?>", $file);
+        return $file;
 
+    }
     public function isset($file) {
         $file = preg_replace_callback("/[@]isset\((.*?)\)[@]/m", fn($match) => "  <?= $match[1] ?? '' ?> ", $file);
         return $file;
