@@ -152,7 +152,7 @@ class compilephp {
     public function conditioncheck($file) {
         $file = preg_replace_callback("/[@]isset\((.*?)\)[@]/m", fn($match) => "  <?= $match[1] ?? '' ?> ", $file);
         $file = preg_replace_callback("/[@]isset\((.*?)\)/m", fn($match) => '  <?php if(isset(' . $match[1] . ')) { ?> ', $file);
-        $file = preg_replace_callback("/[@]auth\(\)/m", fn() => "  <?php  session_status() === PHP_SESSION_ACTIVE && isset(".$_SESSION['user_id'].")){ ?> ", $file);
+        $file = preg_replace_callback("/[@]auth\(\)/m", fn() => '  <?php  if(session_status() === PHP_SESSION_ACTIVE && isset($_SESSION["user_id"])){ ?> ', $file);
         $file = preg_replace_callback("/[@]if\((.*?)\)/m", fn($match) => '  <?php if(' . $match[1] . ') { ?> ', $file);
         $file = preg_replace_callback("/[@]elseif\((.*?)\)/m", fn($match) => "<?php }elseif(" . $match[1] . "){ ?>", $file);
         $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
