@@ -2,13 +2,13 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class solidset
-{
-    public function __construct(public $table, public $json)
-    {
+class solidset {
+
+    public function __construct(public $table, public $json) {
+        
     }
-    public function set()
-    {
+
+    public function set() {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
             $solidjs = '/solidjs/src/shared/';
@@ -22,8 +22,8 @@ class solidset
             fwrite($solidservice, $solidservice_write);
         }
     }
-    public static function SolidTsStore($table)
-    {
+
+    public static function SolidTsStore($table) {
         $Name = ucfirst($table['name']);
         $names = $table['table'];
         $dir = "../../";
@@ -67,8 +67,8 @@ class solidset
     }
     export { " . $Name . "Store };";
     }
-    public static function SolidServicesTs($table)
-    {
+
+    public static function SolidServicesTs($table) {
         $Name = ucfirst($table['name']);
         $name = $table['name'];
         $dir = "../../";

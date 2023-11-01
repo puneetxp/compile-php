@@ -1,4 +1,5 @@
 <?php
+
 require __DIR__ . "/../../vendor/autoload.php";
 require __DIR__ . "/api/Ipublic.php";
 require __DIR__ . "/api/Islogin.php";
@@ -9,7 +10,10 @@ require __DIR__ . "/view/public.php";
 require __DIR__ . "/view/auth.php";
 require __DIR__ . "/view/islogin.php";
 
-use The\compile\{RouteCompile, Thefun};
+use The\compile\{
+    RouteCompile,
+    Thefun
+};
 
 $routes = [
     [

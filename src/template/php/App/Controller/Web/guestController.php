@@ -10,28 +10,25 @@ use view\pages\public\{
     register
 };
 
-class guestController
-{
+class guestController {
 
-    public static function homepage()
-    {
+    public static function homepage() {
         return (new index())->view();
     }
 
-    public static function aboutus()
-    {
+    public static function aboutus() {
         return (new aboutus())->view();
     }
-    public static function contactus()
-    {
+
+    public static function contactus() {
         return (new contactus())->view();
     }
-    public static function login()
-    {
+
+    public static function login() {
         return (new login())->view();
     }
-    public static function register()
-    {
+
+    public static function register() {
         return (new register())->view();
     }
 }

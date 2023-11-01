@@ -2,13 +2,13 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class vueset
-{
-    public function __construct(public $table, public $json)
-    {
+class vueset {
+
+    public function __construct(public $table, public $json) {
+        
     }
-    public function set()
-    {
+
+    public function set() {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
             $vuedjs = '/vuets/src/shared/';
@@ -22,8 +22,8 @@ class vueset
             fwrite($vueservice, $vueservice_write);
         }
     }
-    public static function Vue_ServiceJs($table)
-    {
+
+    public static function Vue_ServiceJs($table) {
         return 'import { use' . ucfirst($table["name"]) . 'Store } from "/src/Store/Model/' . ucfirst($table["name"]) . '.js";
 
 const link = "/api/' . $table["name"] . '"
@@ -69,8 +69,8 @@ function del(id) {
 }
 export default { all, create, update, del, upsert };';
     }
-    function Vue_StoreJs($table)
-    {
+
+    function Vue_StoreJs($table) {
         return 'import { defineStore, acceptHMRUpdate } from "/cdn/js/pinia.js";
 export const use' . ucfirst($table["name"]) . 'Store = defineStore({
     id: "' . ucfirst($table["name"]) . '",
