@@ -2,97 +2,94 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class angularset
-{
-  public function __construct(public $table, public $json)
-  {
-  }
+class angularset {
 
-  function dbsetfortable($table)
-  {
-    $x = json_encode(array_column($table, "name"));
-    fwrite(index::fopen_dir($_ENV["dir"]  . "/angular/src/app/shared/db/tables.ts"), "export const tables =$x");
-  }
-  function initservice($table)
-  {
-    $serviceconstruct = [];
-    $serviceimport = [];
-    $servicerun = [];
-    foreach ($table as $item) {
-      $Name = ucfirst($item['name']);
-      $serviceimport[] = "import { " . $Name . "Service } from './Model/$Name.service';";
-      $serviceconstruct[] = "private " . $item['table'] . " : $Name" . "Service";
-      $servicerun[] = "await this." . $item['table'] . ".checkinit()";
+    public function __construct(public $table, public $json) {
+        
     }
-    $write = "import { Injectable } from '@angular/core';" .
-      implode("\n", $serviceimport) . "
+
+    function dbsetfortable($table) {
+        $x = json_encode(array_column($table, "name"));
+        fwrite(index::fopen_dir($_ENV["dir"] . "/angular/src/app/shared/db/tables.ts"), "export const tables =$x");
+    }
+
+    function initservice($table) {
+        $serviceconstruct = [];
+        $serviceimport = [];
+        $servicerun = [];
+        foreach ($table as $item) {
+            $Name = ucfirst($item['name']);
+            $serviceimport[] = "import { " . $Name . "Service } from './Model/$Name.service';";
+            $serviceconstruct[] = "private " . $item['table'] . " : $Name" . "Service";
+            $servicerun[] = "await this." . $item['table'] . ".checkinit()";
+        }
+        $write = "import { Injectable } from '@angular/core';" .
+                implode("\n", $serviceimport) . "
 import { IndexedDBService } from './indexed-db.service';
 import { tables } from '../db/tables';
 @Injectable({
   providedIn: 'root'
 })
 export class RunService {
-  constructor(private indexdb: IndexedDBService," .  implode(",\n", $serviceconstruct) . ") { }
+  constructor(private indexdb: IndexedDBService," . implode(",\n", $serviceconstruct) . ") { }
   async run() {
     this.indexdb.setDb('shopinfactorynew');
     this.indexdb.setTable(tables);
-    " .  implode(";\n", $servicerun) . "
+    " . implode(";\n", $servicerun) . "
   }
 }
 ";
 
-    fwrite(index::fopen_dir($_ENV["dir"]  . "/angular/src/app/shared/Service/run.service.ts"), $write);
-  }
-  function angularset()
-  {
-    $this->dbsetfortable($this->table);
-    $this->initservice($this->table);
-    foreach ($this->table as $item) {
-      $Interface_write = index::Interface_set($item);
-      $angular_path = '/angular/src/app/shared/';
-      $servicets = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('service/') . ucfirst('model/') . ucfirst($item['name']) . '.service.ts');
-      $servicets_write = $this->servicets_set($item);
-      fwrite($servicets, $servicets_write);
-      $statesngxs = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('ngxs/') . ucfirst('state/') . ucfirst($item['name']) . '.state.ts');
-      $statesngxs_write = $this->statengxs_set($item);
-      fwrite($statesngxs, $statesngxs_write);
-      $actionngxs = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('ngxs/') . ucfirst('action/') . ucfirst($item['name']) . '.action.ts');
-      $actionngxs_write = $this->actionngxs_set($item);
-      fwrite($actionngxs, $actionngxs_write);
-      $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
-      fwrite($Interface, $Interface_write);
-      $this->formsset($item);
-      $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Form/' . ucfirst('validation/') . ucfirst($item['name']) . '.ts');
-      fwrite($Interface, $this->formsset($item));
+        fwrite(index::fopen_dir($_ENV["dir"] . "/angular/src/app/shared/Service/run.service.ts"), $write);
     }
-    $angular_config = json_decode(file_get_contents($_ENV["dir"]  . '/angular/angular.json'), TRUE);
 
-    
-    if (isset($this->json["angular"]["outputPath"])) {
-      $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $this->json["angular"]["outputPath"];
-    }
-    if (isset($this->json["angular"]["assets"])) {
-      $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$this->json["angular"]["assets"]]);
-      foreach ($this->json["angular"]["assets"] as $value) {
-        if ($value == "src/storage") {
-          symlink($_ENV["dir"]  . "/storage/public", $_ENV["dir"]  . "/angular/src/storage");
-        } else {
-          copy($_ENV["dir"]  . "/config/angular/" . $value, $_ENV["dir"]  . "/angular/" . $value);
+    function angularset() {
+        $this->dbsetfortable($this->table);
+        $this->initservice($this->table);
+        foreach ($this->table as $item) {
+            $Interface_write = index::Interface_set($item);
+            $angular_path = '/angular/src/app/shared/';
+            $servicets = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('service/') . ucfirst('model/') . ucfirst($item['name']) . '.service.ts');
+            $servicets_write = $this->servicets_set($item);
+            fwrite($servicets, $servicets_write);
+            $statesngxs = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('ngxs/') . ucfirst('state/') . ucfirst($item['name']) . '.state.ts');
+            $statesngxs_write = $this->statengxs_set($item);
+            fwrite($statesngxs, $statesngxs_write);
+            $actionngxs = index::fopen_dir($_ENV["dir"] . $angular_path . ucfirst('ngxs/') . ucfirst('action/') . ucfirst($item['name']) . '.action.ts');
+            $actionngxs_write = $this->actionngxs_set($item);
+            fwrite($actionngxs, $actionngxs_write);
+            $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
+            fwrite($Interface, $Interface_write);
+            $this->formsset($item);
+            $Interface = index::fopen_dir($_ENV["dir"] . $angular_path . 'Form/' . ucfirst('validation/') . ucfirst($item['name']) . '.ts');
+            fwrite($Interface, $this->formsset($item));
         }
-      }
-    }
-    file_put_contents($_ENV["dir"]  . '/angular/angular.json', json_encode(
-      $angular_config,
-      JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    ));
-    index::templatecopy("angular", "angular");
-  }
+        $angular_config = json_decode(file_get_contents($_ENV["dir"] . '/angular/angular.json'), TRUE);
 
-  function actionngxs_set($table)
-  {
-    $dir = "../..";
-    $Name = ucfirst($table['name']);
-    return "import { $Name } from '$dir/Interface/Model/$Name';
+        if (isset($this->json["angular"]["outputPath"])) {
+            $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $this->json["angular"]["outputPath"];
+        }
+        if (isset($this->json["angular"]["assets"])) {
+            $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$this->json["angular"]["assets"]]);
+            foreach ($this->json["angular"]["assets"] as $value) {
+                if ($value == "src/storage") {
+                    symlink($_ENV["dir"] . "/storage/public", $_ENV["dir"] . "/angular/src/storage");
+                } else {
+                    copy($_ENV["dir"] . "/config/angular/" . $value, $_ENV["dir"] . "/angular/" . $value);
+                }
+            }
+        }
+        file_put_contents($_ENV["dir"] . '/angular/angular.json', json_encode(
+                        $angular_config,
+                        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+        ));
+        index::templatecopy("angular", "angular");
+    }
+
+    function actionngxs_set($table) {
+        $dir = "../..";
+        $Name = ucfirst($table['name']);
+        return "import { $Name } from '$dir/Interface/Model/$Name';
 export class Set$Name {
   static readonly type = '[" . strtoupper($table['table']) . "] set $Name';
   constructor(public payload: $Name" . "[]" . ") { }
@@ -116,15 +113,14 @@ export class Upsert$Name {
   static readonly type = '[" . strtoupper($table['table']) . "] upsert';
   constructor(public payload: $Name" . "[]" . ") { }
 }";
-  }
+    }
 
-  function statengxs_set($table)
-  {
-    $dir = "../..";
-    $Name = ucfirst($table['name']);
-    $name = $table['name'];
-    $names = $table['table'];
-    return "import { State, Action, StateContext, Selector } from '@ngxs/store';
+    function statengxs_set($table) {
+        $dir = "../..";
+        $Name = ucfirst($table['name']);
+        $name = $table['name'];
+        $names = $table['table'];
+        return "import { State, Action, StateContext, Selector } from '@ngxs/store';
 import { Add$Name, Delete$Name, Edit$Name, Set$Name, Upsert$Name  } from '../Action/$Name" . ".action';
 import { $Name } from '$dir/Interface/Model/$Name';
 import { Injectable } from '@angular/core';
@@ -189,29 +185,29 @@ export class $Name" . "State {
   }
 }
 ";
-  }
-  function formsset($table)
-  {
-    $nullable = array_column(array_filter(
-      $table["data"],
-      fn ($r) => !(isset($r["default"]) ? ($r["default"] === "NULL" ? false : true) : true) &&
-        !(isset($r["sql_attribute"]) && (str_contains($r['sql_attribute'], 'NOT NULL') || str_contains($r['sql_attribute'], 'PRIMARY')))
-    ), "name");
-    $fillable = array_filter($table["data"], fn ($r) => !isset($r["fillable"]));
-    return "import { Validators } from '@angular/forms'; \nexport const " .  "Create" . $table["name"] . "Form = {" . implode("", array_map(fn ($value) => "
+    }
+
+    function formsset($table) {
+        $nullable = array_column(array_filter(
+                        $table["data"],
+                        fn($r) => !(isset($r["default"]) ? ($r["default"] === "NULL" ? false : true) : true) &&
+                        !(isset($r["sql_attribute"]) && (str_contains($r['sql_attribute'], 'NOT NULL') || str_contains($r['sql_attribute'], 'PRIMARY')))
+                ), "name");
+        $fillable = array_filter($table["data"], fn($r) => !isset($r["fillable"]));
+        return "import { Validators } from '@angular/forms'; \nexport const " . "Create" . $table["name"] . "Form = {" . implode("", array_map(fn($value) => "
   " . $value["name"] . ": { validator:" . ((in_array($value["name"], $nullable) || isset($value['default'])) ? " [] " : " [Validators.required] ") . "},", $fillable)) . "
 };
-export const Update" . $table["name"] . "Form = {" . implode("", array_map(fn ($value) => "
+export const Update" . $table["name"] . "Form = {" . implode("", array_map(fn($value) => "
   " . $value["name"] . ": { validator:" . (in_array($value["name"], $nullable) ? " [] " : " [Validators.required] ") . "},", $table["data"])) . "
 };";
-  }
-  function servicets_set($table)
-  {
-    $Name = ucfirst($table['name']);
-    $name = $table['name'];
-    $names = $table['table'];
-    $dir = "../../";
-    return "import { Injectable } from '@angular/core';
+    }
+
+    function servicets_set($table) {
+        $Name = ucfirst($table['name']);
+        $name = $table['name'];
+        $names = $table['table'];
+        $dir = "../../";
+        return "import { Injectable } from '@angular/core';
 import { Select, Store } from '@ngxs/store';
 import { map, Observable } from 'rxjs';
 import { Add$Name, Delete$Name, Edit$Name, Set$Name , Upsert$Name } from '$dir" . "Ngxs/Action/$Name.action';
@@ -275,7 +271,7 @@ export class $Name" . "Service {
     );
   }
   " . (in_array("enable", array_column($table['data'], 'name')) ?
-      "toggle(id: number) {
+                "toggle(id: number) {
     this.find(id).pipe(map(i => i && this.update(i.id, { enable: i.enable ? 0 : 1 })));
   }" : "") . "
   refresh(" . $names . ": " . $Name . "[]) {
@@ -307,5 +303,5 @@ export class $Name" . "Service {
     return this.form.delete<number>(this.url + '/' + id).subscribe(i => this.store.dispatch(new Delete" . $Name . "(i)));
   }
 }";
-  }
+    }
 }

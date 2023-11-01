@@ -2,10 +2,9 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class index
-{
-    static function interface_set($table)
-    {
+class index {
+
+    static function interface_set($table) {
         $x = [];
         foreach ($table['data'] as $item) {
             if (isset($item['sql_attribute']) && (str_contains($item['sql_attribute'], 'NOT NULL') || str_contains($item['sql_attribute'], 'PRIMARY') || str_contains($item['sql_attribute'], 'UNIQUE'))) {
@@ -19,23 +18,20 @@ class index
        ', $x) . '
     }';
     }
-    static function php_wrapper($data)
-    {
+
+    static function php_wrapper($data) {
         return '<?php ' . $data . '?> ';
     }
 
-    static function php_w($data)
-    {
+    static function php_w($data) {
         return "<?php\n" . $data;
     }
 
-    static function class_wrapper($name, $data)
-    {
+    static function class_wrapper($name, $data) {
         return ' class ' . $name . ' {' . $data . '} ';
     }
 
-    static function unique_multidim_array($array, $key)
-    {
+    static function unique_multidim_array($array, $key) {
         $temp_array = array();
         $i = 0;
         $key_array = array();
@@ -50,8 +46,7 @@ class index
         return $temp_array;
     }
 
-    static function fopen_dir($link)
-    {
+    static function fopen_dir($link) {
         $filename = $link;
         $dirname = dirname($filename);
         if (!is_dir($dirname)) {
@@ -59,16 +54,16 @@ class index
         }
         return fopen($filename, 'w');
     }
-    static function createfile($dir, $string)
-    {
+
+    static function createfile($dir, $string) {
         fwrite(index::fopen_dir($dir), $string);
     }
-    public static function copyfile($from, $to)
-    {
+
+    public static function copyfile($from, $to) {
         fwrite(index::fopen_dir($to), file_get_contents($from));
     }
-    static function scanfullfolder($dir)
-    {
+
+    static function scanfullfolder($dir) {
         $x = [];
         if (is_dir($dir)) {
             $d = scandir($dir);
@@ -82,9 +77,10 @@ class index
         }
         return $x;
     }
+
     public $table = [];
-    public function __construct(private $rawtable, private $all)
-    {
+
+    public function __construct(private $rawtable, private $all) {
         $this->table["name"] = $this->rawtable['name'];
         $this->table["table"] = $this->rawtable['table'];
         if (isset($rawtable['type'])) {
@@ -95,8 +91,8 @@ class index
         }
         $this->table["data"] = [];
     }
-    public function defaultsetup($default)
-    {
+
+    public function defaultsetup($default) {
         if (in_array('id', $default)) {
             $this->table["data"][] = ['name' => 'id', 'mysql_data' => 'int', 'datatype' => 'number', 'fillable' => "false", 'sql_attribute' => 'UNSIGNED PRIMARY KEY AUTO_INCREMENT'];
         }
@@ -108,10 +104,10 @@ class index
         }
         return $this;
     }
-    public function addional_default()
-    {
+
+    public function addional_default() {
         isset($this->rawtable['enable']) ?
-            $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'TINYINT(1)', 'datatype' => 'number', 'default' => 1] : '';
+                        $this->table["data"][] = ['name' => 'enable', 'mysql_data' => 'TINYINT(1)', 'datatype' => 'number', 'default' => 1] : '';
         if (isset($this->rawtable["additional"])) {
             foreach ($this->rawtable["additional"] as $item) {
                 switch ($item) {
@@ -127,19 +123,19 @@ class index
         }
         return $this;
     }
-    public static function table_set($table, $all)
-    {
+
+    public static function table_set($table, $all) {
         return (new static($table, $all))->defaultsetup(isset($table["default"]) ? $table["default"] : ['id', 'created_at', 'updated_at'])->addional_default()->importdata()->relation();
     }
-    public function importdata()
-    {
+
+    public function importdata() {
         if (isset($this->rawtable['data']) && count($this->rawtable["data"])) {
             $this->table["data"] = array_merge($this->table["data"], $this->rawtable["data"]);
         }
         return $this;
     }
-    public function relation()
-    {
+
+    public function relation() {
         if (isset($this->rawtable['relation'])) {
             foreach ($this->rawtable['relation'] as $relation) {
                 $r = [];
@@ -159,12 +155,12 @@ class index
         }
         return $this;
     }
-    public static function templatecopy(string $folder, string $destination)
-    {
+
+    public static function templatecopy(string $folder, string $destination) {
         foreach (index::scanfullfolder(__DIR__ . "/../template/$folder") as $file) {
-            $target = str_replace(__DIR__ . "/../template/$folder", "",  $file);
-            if (!is_file($_ENV['dir']  . DIRECTORY_SEPARATOR . $destination . $target)) {
-                index::copyfile($file, $_ENV['dir'] . DIRECTORY_SEPARATOR  . $destination .  $target);
+            $target = str_replace(__DIR__ . "/../template/$folder", "", $file);
+            if (!is_file($_ENV['dir'] . DIRECTORY_SEPARATOR . $destination . $target)) {
+                index::copyfile($file, $_ENV['dir'] . DIRECTORY_SEPARATOR . $destination . $target);
             }
         }
     }

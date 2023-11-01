@@ -1,1 +1,3 @@
-<?php $_ENV =array ();
+<?php
+
+$_ENV = array();

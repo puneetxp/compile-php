@@ -217,7 +217,7 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
     function phpController(array $table, array $curd, string $key = '', string $prefix = "") {
         if (isset($table["type"])) {
             if ($table["type"]['name'] == "file") {
-
+                
             } elseif ($table["type"]['name'] == "photo") {
                 return $this->phpphotoController($table, $curd, $key, $prefix);
             }
@@ -274,4 +274,3 @@ class ' . ucfirst($prefix . $key) . ucfirst($table['name']) . 'Controller {' . (
                                 }, array_keys($json["env"]), $json["env"]))));
     }
 }
-

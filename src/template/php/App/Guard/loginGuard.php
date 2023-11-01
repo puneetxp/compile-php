@@ -14,5 +14,4 @@ class loginGuard {
         }
         return true;
     }
-
 }
