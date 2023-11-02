@@ -148,6 +148,9 @@ class compilephp {
       1
       );
       } */
+    public function envfunction($file){
+        $file = preg_replace_callback("/[@]env\((.*?)\)[@]/m", fn($match) => ' <?= $_ENV['.$match[1].'] ?> ', $file);
+    }
 
     public function conditioncheck($file) {
         $file = preg_replace_callback("/[@]isset\((.*?)\)[@]/m", fn($match) => "  <?= $match[1] ?? '' ?> ", $file);
@@ -214,6 +217,7 @@ class compilephp {
         $file = preg_replace("/\{\{([\s\S]*?)\}\}/m", '<?= ' . "$1" . ' ?>', $file);
         /* $file = preg_replace("/\{(.+)?\}/m", '<?= ' . "$1" . ' ?>', $file); */
         $file = $this->conditioncheck($file);
+        $file = $this->envfunction($file);
         $file = $this->foreachnested($file);
         $file = $this->find($file);
         $file = $this->compile_Tfunc($file);
