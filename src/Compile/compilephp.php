@@ -149,7 +149,7 @@ class compilephp {
       );
       } */
     public function envfunction($file){
-        $file = preg_replace_callback("/[@]env\((.*?)\)[@]/m", fn($match) => ' <?= $_ENV['.$match[1].'] ?> ', $file);
+        return preg_replace_callback("/[@]env\((.*?)\)[@]/m", fn($match) => ' <?= $_ENV['.$match[1].'] ?> ', $file);
     }
 
     public function conditioncheck($file) {
