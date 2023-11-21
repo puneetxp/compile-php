@@ -215,7 +215,7 @@ import { $Name } from '$dir" . "Interface/Model/$Name';
 import { $Name" . "StateModel } from '$dir" . "Ngxs/State/$Name.state';
 import { AsyncPipe } from '@angular/common';
 import { IndexedDBService } from '../indexed-db.service';
-import { FormDataService } from '../Form/FormData.service';
+import { FormDataService } from 'the-angular/lib/service/Form/FormData.service';
 type keys = '" . implode("' | '", array_column($table['data'], 'name')) . "';
 interface find {
   key?: keys;
@@ -238,7 +238,7 @@ export class $Name" . "Service {
       this.store.dispatch(new Set$Name(i));
     });
   }
-  private url = '/api/' + this.model;
+  public url = '/api/' + this.model;
   create(_value: any): void {
     this.form.post<" . $Name . ">(this.url, _value).subscribe(i => this.store.dispatch(new Add" . $Name . "(i)));
   }
