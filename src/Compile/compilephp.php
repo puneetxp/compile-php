@@ -28,9 +28,9 @@ class compilephp {
         if (is_dir($dir)) {
             foreach (scandir($dir) as $file) {
                 if ($file == '.') {
-
+                    
                 } elseif ($file == "..") {
-
+                    
                 } elseif (is_file("$dir/$file")) {
                     $this->ComponentDir($dir, $file);
                 } elseif (is_dir("$dir/$file")) {
@@ -90,7 +90,7 @@ class compilephp {
             $json = "/^\[.+?/";
             if (preg_match("/[:]([a-zA-Z\d?:>\-_\$+]{1,})/", $i[1], $attribute)) {
                 if (preg_match($json, $i[2])) {
-                    $n[] = $attribute[1] . ": " . var_export(json_decode($i[2]), true);
+                    $n[] = $attribute[1] . ": " . var_export($i[2], true);
                 } else {
                     $n[] = str_replace(":", "", $i[1]) . ": " . str_replace($i[1] . "=", "", $i[0]);
                 }
@@ -114,14 +114,13 @@ class compilephp {
           return "";
           }, $file); */
 
-        $this->files[$this->active]['body'] = str_replace(["\r", "\t", "    ", "   ", "                  "], "", preg_replace_callback("/(<[\w].+? )(.+?)((?:\/|)(?<!this-)>)/m", function ($html) {
+        $this->files[$this->active]['body'] = str_replace(["\n", "\r\n", "\r", "\t", "    ", "   ", "                  "], "", preg_replace_callback("/(<[\w].+? )(.+?)((?:\/|)(?<!this-)>)/m", function ($html) {
                     $attribute = "/( |\"|\')[\:]([\w|data-]+)=?((?:.(?![\"\']?\s+(?:\S+)=|[\"\']$))+.[\"\']?)/m";
                     return $html[1] . preg_replace_callback($attribute, function ($match) {
                         return $match[1] . $match[2] . "=<?=" . $match[3] . "?>";
                     }, $html[2]) . $html[3];
                     return $html[0];
                 }, $file));
-        $this->files[$this->active]['body'] = str_replace(["\n", "\r\n"], " ", $this->files[$this->active]['body']);
         $this->active = "";
         //return $file;
     }
@@ -148,19 +147,12 @@ class compilephp {
       1
       );
       } */
-    public function envfunction($file){
-        return preg_replace_callback("/[@]env\((.*?)\)[@]/m", fn($match) => ' <?= $_ENV['.$match[1].'] ?> ', $file);
-    }
 
     public function conditioncheck($file) {
-        $file = preg_replace_callback("/[@]isset\((.*?)\)[@]/m", fn($match) => "  <?= $match[1] ?? '' ?> ", $file);
-        $file = preg_replace_callback("/[@]isset\((.*?)\)/m", fn($match) => '  <?php if(isset(' . $match[1] . ')) { ?> ', $file);
-        $file = preg_replace_callback("/[@]auth\(\)/m", fn() => '  <?php  if(session_status() === PHP_SESSION_ACTIVE && isset($_SESSION["user_id"])){ ?> ', $file);
         $file = preg_replace_callback("/[@]if\((.*?)\)/m", fn($match) => '  <?php if(' . $match[1] . ') { ?> ', $file);
         $file = preg_replace_callback("/[@]elseif\((.*?)\)/m", fn($match) => "<?php }elseif(" . $match[1] . "){ ?>", $file);
         $file = preg_replace("/[@]else/m", "<?php }else { ?>", $file);
         $file = preg_replace("/[@]endif/m", "<?php } ?>", $file);
-        $file = preg_replace("/[@]endisset/m", "<?php } ?>", $file);
         return $file;
     }
 
@@ -217,7 +209,6 @@ class compilephp {
         $file = preg_replace("/\{\{([\s\S]*?)\}\}/m", '<?= ' . "$1" . ' ?>', $file);
         /* $file = preg_replace("/\{(.+)?\}/m", '<?= ' . "$1" . ' ?>', $file); */
         $file = $this->conditioncheck($file);
-        $file = $this->envfunction($file);
         $file = $this->foreachnested($file);
         $file = $this->find($file);
         $file = $this->compile_Tfunc($file);
@@ -229,9 +220,9 @@ class compilephp {
             $keyparm = "," . implode(",", (array_map(fn($key) => '$' . "$key", array_keys($r))));
             $parampublic = "," . implode(",", (array_map(fn($value, $key) =>
                                     'public $' . "$key = " .
-                                    (is_array($value) || is_object($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
+                                    (is_array($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
             $param = "," . implode(",", (array_map(fn($value, $key) => '$' . "$key = " .
-                                    (is_array($value) || is_object($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
+                                    (is_array($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($r), array_keys($r))));
         }
         if (count($this->files[$this->active]['child']) > 0) {
             $childx = implode("", (array_map(fn($value, $key) => "public function child$key() {
