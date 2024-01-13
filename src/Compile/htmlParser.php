@@ -306,7 +306,11 @@ class htmlParser
                 $string .= $this->tostring($tag['childern']);
             }
             if (!isset($tag['case']) && isset($tag["tag"]) && $tag["tag"] !== "") {
-                $string .= "</" . $tag["tag"] . ">";
+                if (isset($tag["end"])) {
+                    $string .= $tag["end"];
+                } else {
+                    $string .= "</" . $tag["tag"] . ">";
+                }
             }
         }
         return $string;
