@@ -4,7 +4,7 @@ namespace Puneetxp\CompilePhp\Compile;
 
 use Puneetxp\CompilePhp\Class\index;
 
-class CompilePhp
+class Compile
 {
     public $config;
     public array $files = [];
@@ -17,7 +17,7 @@ class CompilePhp
         $this->folderscan($dir);
     }
     function folderscan($dir)
-    {
+    {0
         if (is_dir($dir)) {
             foreach (scandir($dir) as $file) {
                 if ($file == '.') {
