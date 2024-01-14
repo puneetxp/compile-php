@@ -111,15 +111,15 @@ class htmlParser
                             $this->next();
                             $this->activetag["attribute"][$attribute]["quote"] = "'";
                             while ($this->html[$this->key] != "'") {
-                                $this->activetag["attribute"][$attribute]["value"] .= $this->html[$this->key];
+                                $this->activetag["attribute"][$attribute]["value"] .=  $this->html[$this->key];
                                 $this->next();
                             }
                         }
                         $this->next();
                     } else {
-                        while ($this->html[$this->key] !== " " && $this->html[$this->key] !== ">" && $this->status !== "open" && $this->status !== "close") {
+                        while ($this->html[$this->key] !== " " &&  $this->html[$this->key] !== ">" && $this->status !== "open" && $this->status !== "close") {
                             if (!$this->checktagisopen()) {
-                                $this->activetag["attribute"][$attribute]["value"] .= $this->html[$this->key];
+                                $this->activetag["attribute"][$attribute]["value"] .=  $this->html[$this->key];
                             }
                             $this->next();
                         }
@@ -172,8 +172,7 @@ class htmlParser
         if ($this->html[$this->key] == "<") {
             if (preg_match("/[A-Za-z]/", $this->html[$this->key + 1])) {
                 if (isset($this->status) && $this->status == "open") {
-                    $this->tags[] = $this->activetag;
-                    $this->activetag = null;
+                    $this->closetag(true);
                 } else {
                     $this->tagtostring();
                     return true;
@@ -224,7 +223,7 @@ class htmlParser
     {
         if (isset($this->activetag["tag"])) {
             if (strlen($this->activetag["tag"]) > 1 && $this->activetag["tag"][0] . $this->activetag["tag"][1] == "t-") {
-                $this->activetag["tag"] = "t-" . implode(".", array_map(fn($v) => in_array($v, $this->config['alias']) ? str_replace($v, array_search($v, $this->config['alias']), $v) : $v, explode(".", str_replace("t-", "", $this->activetag["tag"]))));
+                $this->activetag["tag"] = "t-" . implode(".", array_map(fn ($v) => in_array($v, $this->config['alias']) ? str_replace($v, array_search($v, $this->config['alias']), $v) : $v, explode(".",  str_replace("t-", "", $this->activetag["tag"]))));
             }
         }
     }
