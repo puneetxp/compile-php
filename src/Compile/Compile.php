@@ -43,6 +43,7 @@ class Compile
         $html = preg_replace("/[@]props\((\{[\s\S]*?\})\)/m", "", $file);
         $html = (new htmlParser(htmlstring: $html, config: $this->config))->parse();
         $name =  str_replace($this->pre, "", $namespace . DIRECTORY_SEPARATOR . $filename);
-        $this->files[$name] = (object)["html" => $html, "t_tag" => array_unique($html->t_tags()), "filename" => $filename, "directory" => $namespace, "parameter" => $parameter];
+        // print_r($html->tags[0]["childern"][0]);
+        $this->files[$name] = (object)["html" => $html, "t_tag" => array_unique($html->startwithtags("t-")), "filename" => $filename, "directory" => $namespace, "parameter" => $parameter];
     }
 }
