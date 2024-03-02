@@ -140,7 +140,9 @@ class htmlParser
                     //print_r("open is" . $this->html[$this->key] . "");
                     $this->status = "open";
                 } else {
-                    $attribute .= $this->html[$this->key];
+                    if ($this->html[$this->key] !== "\n" && $this->html[$this->key] !== " ") {
+                        $attribute .= $this->html[$this->key];
+                    }
                     $this->next();
                 }
             }
