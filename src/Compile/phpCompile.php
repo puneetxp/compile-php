@@ -70,12 +70,18 @@ class phpCompile
                        "attribute: " . $native .
                         ")?>";
 */
+                } elseif ($tag["tag"] == "slot") {
+                    $string .= '<?php is_callable($child) ? $child() : $child ?>';
                 } else {
                     $string .= "<" . $tag["tag"];
                     foreach (($tag["attribute"] ?? []) as $key => $value) {
                         //print_r($key);
                         //print_r($value);
-                        $string .= " " . $key . ($value["value"] = !"" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
+                        if (str_split($key)[0] !== ':') {
+                            $string .= " " . $key . ($value["value"] = !"" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
+                        } else {
+                            $string .= " " . str_replace(":", "", $key) . "= " . ($value["quote"] ?? "") . "<?=" . ($value["value"] ?? "") . "?>" . ($value["quote"] ?? "");
+                        }
                     }
                     if (isset($tag["case"])) {
                         if ($tag["case"] === "self") {
@@ -107,11 +113,15 @@ class phpCompile
             return  "<?php foreach($" . $attribute['array'] . " as $" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
         } elseif ($tagname == "find2d") {
             /*
-<?= $array[array_search($find, array_column($array,$col))][$getvalue] ?>
-*/
-            return  "<?= $" . $attribute['array'] . "array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . "," . $attribute["col"] . "))][$" . $attribute['getvalue'] . "]";
+                <?= $array[array_search($find, array_column($array,$col))][$getvalue] ?>
+            */
+            return  "<?= $" . $attribute['array'] . "[array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . ",'" . $attribute["col"] . "'))][" . $attribute['getvalue'] . "] ?>";
         } elseif ($tagname == "find") {
             return  str_replace([], [], $html);
+        } elseif ($tagname == "if") {
+            return "<?php if($" . $attribute["condition"] . "){ ?>" .
+                $html .
+                "<?php } ?>";
         }
     }
 }
