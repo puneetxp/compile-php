@@ -49,6 +49,8 @@ class htmlParser
             $this->checktagisclose(true, $this->string)
         ) {
             if ($this->checktagisopen()) {
+                $this->addstring($this->string);
+                $this->string = "";
                 $this->next("checkitisopen");
                 $this->checktag();
             } else {
