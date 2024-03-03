@@ -61,7 +61,7 @@ class phpCompile
                         "<?php }," .
                         $parameter .
                         "attribute: " . $native
-                        . ")?>";
+                        . ");?>";
                 } elseif (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "f-") {
                     $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn ($value) => $value["value"], $tag['attribute']), $this->tostring($tag['childern'] ?? []));
                     /*                    $string .= "<?php new $x(" . "child: function(){?>" .
