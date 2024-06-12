@@ -78,7 +78,7 @@ class phpCompile
                         //print_r($key);
                         //print_r($value);
                         if (str_split($key)[0] !== ':') {
-                            $string .= " " . $key . ($value["value"] = !"" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
+                            $string .= " " . $key . ($value["value"] != "" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
                         } else {
                             $string .= " " . str_replace(":", "", $key) . "= " . ($value["quote"] ?? "") . "<?=" . ($value["value"] ?? "") . "?>" . ($value["quote"] ?? "");
                         }
