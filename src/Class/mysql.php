@@ -13,7 +13,7 @@ class mysql {
                                     array_replace(
                                             $data,
                                             ["sql_attribute" => ((isset($data['default']) || isset($data['sql_attribute'])) ? ((isset($data['default']) ?
-                                                ($data['default'] === "NULL" ? "" : " NOT NULL ") . " DEFAULT " . $data["default"] :
+                                                (strtoupper($data['default']) === "NULL" ? "" : " NOT NULL ") . " DEFAULT " . $data["default"] :
                                                 '')
                                                 . " " . (isset($data["sql_attribute"]) ? $data["sql_attribute"] : '')) : " NOT NULL ")]
                                     ), $item['data'])]
