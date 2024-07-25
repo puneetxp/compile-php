@@ -19,7 +19,7 @@ class phpCompile
                             ? $value
                             : ('"' . "$value" . '"'))),
                 array_values($value->parameter),
-                array_keys($value->pacrameter)
+                array_keys($value->parameter)
             )));
             index::createfile(
                 $this->destination . DIRECTORY_SEPARATOR . $index . ".php",
