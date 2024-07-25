@@ -11,9 +11,16 @@ class phpCompile
     {
         foreach ($this->files as $index => $value) {
             $this->file = $value;
-            $parameter = implode(",", (array_map(fn($value, $key) =>
-            '$' . "$key = " .
-                (is_array($value) || is_object($value) ? var_export($value, true) : (preg_match("/\d/", $value) ? $value : ('"' . "$value" . '"'))), array_values($value->parameter), array_keys($value->parameter))));
+            $parameter = implode(",", (array_map(
+                fn($value, $key) =>
+                '$' . "$key = " .
+                    (is_array($value) || is_object($value) ?
+                        var_export($value, true) : (preg_match("/^[0-9]*$/", $value)
+                            ? $value
+                            : ('"' . "$value" . '"'))),
+                array_values($value->parameter),
+                array_keys($value->pacrameter)
+            )));
             index::createfile(
                 $this->destination . DIRECTORY_SEPARATOR . $index . ".php",
                 "<?php namespace " .
