@@ -4,7 +4,7 @@ namespace Puneetxp\CompilePhp\Class;
 
 class index {
 
-    static function interface_set($table) {
+    public static function interface_set($table) {
         $x = [];
         foreach ($table['data'] as $item) {
             if (isset($item['sql_attribute']) && (str_contains($item['sql_attribute'], 'NOT NULL') || str_contains($item['sql_attribute'], 'PRIMARY') || str_contains($item['sql_attribute'], 'UNIQUE'))) {
@@ -19,19 +19,19 @@ class index {
     }';
     }
 
-    static function php_wrapper($data) {
+    public static function php_wrapper($data) {
         return '<?php ' . $data . '?> ';
     }
 
-    static function php_w($data) {
+    public static function php_w($data) {
         return "<?php\n" . $data;
     }
 
-    static function class_wrapper($name, $data) {
+    public static function class_wrapper($name, $data) {
         return ' class ' . $name . ' {' . $data . '} ';
     }
 
-    static function unique_multidim_array($array, $key) {
+    public static function unique_multidim_array($array, $key) {
         $temp_array = array();
         $i = 0;
         $key_array = array();
@@ -46,7 +46,7 @@ class index {
         return $temp_array;
     }
 
-    static function fopen_dir($link) {
+    public static function fopen_dir($link) {
         $filename = $link;
         $dirname = dirname($filename);
         if (!is_dir($dirname)) {
@@ -55,7 +55,7 @@ class index {
         return fopen($filename, 'w');
     }
 
-    static function createfile($dir, $string) {
+    public static function createfile($dir, $string) {
         fwrite(index::fopen_dir($dir), $string);
     }
 
@@ -63,7 +63,7 @@ class index {
         fwrite(index::fopen_dir($to), file_get_contents($from));
     }
 
-    static function scanfullfolder($dir) {
+    public static function scanfullfolder($dir) {
         $x = [];
         if (is_dir($dir)) {
             $d = scandir($dir);
@@ -94,7 +94,7 @@ class index {
 
     public function defaultsetup($default) {
         if (in_array('id', $default)) {
-            $this->table["data"][] = ['name' => 'id', 'mysql_data' => 'int', 'datatype' => 'number', 'fillable' => "false", 'sql_attribute' => 'UNSIGNED PRIMARY KEY AUTO_INCREMENT'];
+            $this->table["data"][] = ['name' => 'id', 'mysql_data' => 'bigint', 'datatype' => 'number', 'fillable' => "false", 'sql_attribute' => 'UNSIGNED PRIMARY KEY AUTO_INCREMENT'];
         }
         if (in_array('created_at', $default)) {
             $this->table["data"][] = ['name' => 'created_at', 'mysql_data' => 'timestamp', 'datatype' => 'Date', 'fillable' => "false", 'sql_attribute' => 'DEFAULT CURRENT_TIMESTAMP NOT NULL'];
@@ -144,7 +144,7 @@ class index {
                 $rx = ['table' => $this->all[$r]['table'], 'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id', 'key' => 'id'];
                 $this->table["data"][] = [
                     'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id',
-                    'mysql_data' => 'int UNSIGNED',
+                    'mysql_data' => 'bigint UNSIGNED',
                     'datatype' => 'number',
                     ...(isset($relation["default"]) ? ["default" => $relation["default"]] : []),
                     ...(isset($relation["sql_attribute"]) ? ["sql_attribute" => $relation["sql_attribute"]] : []),

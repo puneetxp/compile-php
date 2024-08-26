@@ -2,8 +2,7 @@
 
 namespace Puneetxp\CompilePhp\Compile;
 
-class htmlParser
-{
+class htmlParser {
 
     public array $tags = [];
     private $status = null;
@@ -28,8 +27,7 @@ class htmlParser
         'wbr',
     ];
 
-    public function __construct(private $config, public string $htmlstring = "", public int $key = 0, public array $html = [])
-    {
+    public function __construct(private $config, public string $htmlstring = "", public int $key = 0, public array $html = []) {
         if (count($this->html)) {
             $this->length = count($this->html);
         } else {
@@ -41,12 +39,12 @@ class htmlParser
     private $activetag;
     private $debug = false;
     private $string = "";
-    public function parse(bool $debug = null)
-    {
+
+    public function parse(bool $debug = null) {
         $this->debug = $debug;
         while (
-            $this->length > $this->key &&
-            $this->checktagisclose(true, $this->string)
+        $this->length > $this->key &&
+        $this->checktagisclose(true, $this->string)
         ) {
             if ($this->checktagisopen()) {
                 $this->addstring($this->string);
@@ -64,8 +62,7 @@ class htmlParser
         return $this;
     }
 
-    private function checktag()
-    {
+    private function checktag() {
         while (preg_match("/[A-Za-z\-\.0-9]/m", $this->html[$this->key])) {
             $this->settag();
             $this->next();
@@ -96,8 +93,7 @@ class htmlParser
         }
     }
 
-    public function addattribute()
-    {
+    public function addattribute() {
         $attribute = "";
         $this->activetag["attribute"] = [];
         while ($this->activetag && isset($this->status) && $this->status !== "open" && $this->status !== "close") {
@@ -117,15 +113,15 @@ class htmlParser
                             $this->next();
                             $this->activetag["attribute"][$attribute]["quote"] = "'";
                             while ($this->html[$this->key] != "'") {
-                                $this->activetag["attribute"][$attribute]["value"] .=  $this->html[$this->key];
+                                $this->activetag["attribute"][$attribute]["value"] .= $this->html[$this->key];
                                 $this->next();
                             }
                         }
                         $this->next();
                     } else {
-                        while ($this->html[$this->key] !== " " &&  $this->html[$this->key] !== ">" && $this->status !== "open" && $this->status !== "close") {
+                        while ($this->html[$this->key] !== " " && $this->html[$this->key] !== ">" && $this->status !== "open" && $this->status !== "close") {
                             if (!$this->checktagisopen()) {
-                                $this->activetag["attribute"][$attribute]["value"] .=  $this->html[$this->key];
+                                $this->activetag["attribute"][$attribute]["value"] .= $this->html[$this->key];
                             }
                             $this->next();
                         }
@@ -151,8 +147,7 @@ class htmlParser
         }
     }
 
-    public function addstring(string $string)
-    {
+    public function addstring(string $string) {
         // print_r($string);
         if (chop($string) !== "") {
             if ($this->activetag) {
@@ -163,8 +158,7 @@ class htmlParser
         }
     }
 
-    private function tagtostring(string $addtionalstring = "")
-    {
+    private function tagtostring(string $addtionalstring = "") {
         if ($this->activetag) {
             $string = $this->activetag["tag"] ?? "";
             foreach ($this->activetag["attribute"] ?? [] as $key => $value) {
@@ -177,8 +171,7 @@ class htmlParser
         }
     }
 
-    private function checktagisopen()
-    {
+    private function checktagisopen() {
         if ($this->html[$this->key] == "<") {
             if (preg_match("/[A-Za-z]/", $this->html[$this->key + 1])) {
                 if (isset($this->status) && $this->status == "open") {
@@ -192,15 +185,12 @@ class htmlParser
         return false;
     }
 
-    private function settag()
-    {
+    private function settag() {
         $this->activetag["tag"] = ($this->activetag["tag"] ?? "") . $this->html[$this->key];
         //print_r("\n" . $this->activetag["tag"] . "\n");
     }
 
-
-    private function next($any = null, $key = null)
-    {
+    private function next($any = null, $key = null) {
         //print_r($any);
         $this->key++;
         if ($key) {
@@ -209,8 +199,7 @@ class htmlParser
         //print_r($this->html[$this->key]);
     }
 
-    private function closetag(bool $bool = false, string $print = null, $additionalattribute = [])
-    {
+    private function closetag(bool $bool = false, string $print = null, $additionalattribute = []) {
         foreach ($additionalattribute as $key => $value) {
             $this->activetag[$key] = $value;
         }
@@ -231,19 +220,19 @@ class htmlParser
             $this->status = "open";
         }
     }
-    private function aliasoverwrite()
-    {
+
+    private function aliasoverwrite() {
         if (isset($this->activetag["tag"])) {
             if (strlen($this->activetag["tag"]) > 1 && $this->activetag["tag"][0] . $this->activetag["tag"][1] == "t-") {
-                $this->activetag["tag"] = "t-" . implode(".", array_map(fn ($v) =>
-                in_array($v, $this->config['alias']) ?
-                    str_replace($v, array_search($v, $this->config['alias']), $v) :
-                    $v, explode(".",  str_replace("t-", "", $this->activetag["tag"]))));
+                $this->activetag["tag"] = "t-" . implode(".", array_map(fn($v) =>
+                                        in_array($v, $this->config['alias']) ?
+                                        str_replace($v, array_search($v, $this->config['alias']), $v) :
+                                        $v, explode(".", str_replace("t-", "", $this->activetag["tag"]))));
             }
         }
     }
-    private function checktagisclose($close = false, $string = null)
-    {
+
+    private function checktagisclose($close = false, $string = null) {
         if ($this->length > $this->key + 1) {
             $end = $this->html[$this->key] . $this->html[$this->key + 1] ?? "";
             //   print_r($end . "\n");
@@ -289,8 +278,8 @@ class htmlParser
             return !$x;
         }
     }
-    public function tostring($tags = null)
-    {
+
+    public function tostring($tags = null) {
         $string = "";
         $tags = $tags ?? $this->tags;
         foreach ($tags as $tag) {
@@ -327,8 +316,7 @@ class htmlParser
         return $string;
     }
 
-    public function startwithtags(string $string, $tags = null): array
-    {
+    public function startwithtags(string $string, $tags = null): array {
         $_tags = [];
         $tags = $tags ?? $this->tags;
         foreach ($tags as $tag) {
