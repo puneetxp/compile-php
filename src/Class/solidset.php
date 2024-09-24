@@ -5,7 +5,7 @@ namespace Puneetxp\CompilePhp\Class;
 class solidset {
 
     public function __construct(public $table, public $json) {
-        
+        $this->set();
     }
 
     public function set() {
@@ -33,7 +33,7 @@ class solidset {
     $names :" . $Name . "[]
     }
     const [state, set] = createStore(<" . $Name . "StateModel>{ " . $names . ": [] });
-    
+
     class " . $Name . "Store {
     static get() {
       return state;
@@ -121,7 +121,9 @@ class solidset {
         req && " . $Name . "Store.update(req);
       }
       async del(id: number) {
-        const req = await JFetch(this.url + id);
+        const req = await JFetch(this.url + id, {
+            method: 'DELETE'
+        });
         req && " . $Name . "Store.del(id);
       }
     }

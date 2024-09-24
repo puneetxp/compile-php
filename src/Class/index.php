@@ -4,7 +4,7 @@ namespace Puneetxp\CompilePhp\Class;
 
 class index {
 
-    public static function interface_set($table) {
+    static function interface_set($table) {
         $x = [];
         foreach ($table['data'] as $item) {
             if (isset($item['sql_attribute']) && (str_contains($item['sql_attribute'], 'NOT NULL') || str_contains($item['sql_attribute'], 'PRIMARY') || str_contains($item['sql_attribute'], 'UNIQUE'))) {
@@ -19,19 +19,19 @@ class index {
     }';
     }
 
-    public static function php_wrapper($data) {
+    static function php_wrapper($data) {
         return '<?php ' . $data . '?> ';
     }
 
-    public static function php_w($data) {
+    static function php_w($data) {
         return "<?php\n" . $data;
     }
 
-    public static function class_wrapper($name, $data) {
+    static function class_wrapper($name, $data) {
         return ' class ' . $name . ' {' . $data . '} ';
     }
 
-    public static function unique_multidim_array($array, $key) {
+    static function unique_multidim_array($array, $key) {
         $temp_array = array();
         $i = 0;
         $key_array = array();
@@ -46,7 +46,7 @@ class index {
         return $temp_array;
     }
 
-    public static function fopen_dir($link) {
+    static function fopen_dir($link) {
         $filename = $link;
         $dirname = dirname($filename);
         if (!is_dir($dirname)) {
@@ -55,7 +55,7 @@ class index {
         return fopen($filename, 'w');
     }
 
-    public static function createfile($dir, $string) {
+    static function createfile($dir, $string) {
         fwrite(index::fopen_dir($dir), $string);
     }
 
@@ -63,7 +63,7 @@ class index {
         fwrite(index::fopen_dir($to), file_get_contents($from));
     }
 
-    public static function scanfullfolder($dir) {
+    static function scanfullfolder($dir) {
         $x = [];
         if (is_dir($dir)) {
             $d = scandir($dir);
