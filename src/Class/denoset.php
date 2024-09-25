@@ -2,14 +2,57 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class denoset {
+class denoset
+{
 
-    public function __construct(public $table, public $json) {
-
-    }
+    public function __construct(public $table, public $json, public $param = "string[]") {}
 
     function denoController($table, $curd, $key = '') {
-        return 'import { response ,Session} from "../../../dep.ts";
+        if ($this->param == "string[]") {
+            return 'import { response ,Session} from "../../../dep.ts";
+import { ' . ucfirst($table['name']) . '$ } from "../../Model/' . ucfirst($table['name']) . '.ts";
+export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
+                (in_array("a", $curd) ? '
+   static async all(session: Session): Promise<Response> {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.all();
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') .
+                (in_array("w", $curd) ? '
+   static async where(session: Session) {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.where(await session.req.json()).Item;
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') .
+                (in_array("r", $curd) ? '
+   static async show(session: Session, param: string[]) {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.find(param[0].toString());
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') .
+                (in_array("c", $curd) ? '
+   static async store(session: Session): Promise<Response> {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.create([await session.req.json()]);
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') .
+                (in_array("u", $curd) ? '
+   static async update(session: Session, param: string[]) {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.update(
+      { id: [param[0]] },
+      await session.req.json(),
+      );
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') .
+                (in_array("p", $curd) ? '
+   static async upsert(session: Session): Promise<Response> {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.create(await session.req.json());
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') .
+                (in_array("d", $curd) ? '
+   static async delete(session: Session, param: string[]) {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.del({id: [param[0]] });
+      return response.JSON( ' . $table['name'] . ' , session);
+   }' : '') . '
+}';
+        } else {
+            return 'import { response ,Session} from "../../../dep.ts";
 import { ' . ucfirst($table['name']) . '$ } from "../../Model/' . ucfirst($table['name']) . '.ts";
 export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                 (in_array("a", $curd) ? '
@@ -23,8 +66,8 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
       return response.JSON(' . $table['name'] . '.items, session);
    }' : '') .
                 (in_array("r", $curd) ? '
-   static async show(session: Session, param: string[]) {
-      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.find(param[0].toString());
+   static async show(session: Session, param:' . $this->param . ') {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.find(param.pathname.groups.id?.toString());
       return response.JSON(' . $table['name'] . '.item, session);
    }' : '') .
                 (in_array("c", $curd) ? '
@@ -33,8 +76,8 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
       return response.JSON(' . $table['name'] . ', session);
    }' : '') .
                 (in_array("u", $curd) ? '
-   static async update(session: Session, param: string[]) {
-      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.where({ id: [param[0]] }).update(await session.req.json());
+   static async update(session: Session, param:' . $this->param . ') {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.where({ id: [param.pathname.groups.id] }).update(await session.req.json());
       return response.JSON(' . $table['name'] . ', session);
    }' : '') .
                 (in_array("p", $curd) ? '
@@ -43,11 +86,12 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
       return response.JSON(' . $table['name'] . ', session);
    }' : '') .
                 (in_array("d", $curd) ? '
-   static async delete(session: Session, param: string[]) {
-      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.delete({ col: "id", value: [param[0]] });
+   static async delete(session: Session, param:' . $this->param . ') {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.delete({ id: [param.pathname.groups.id] });
       return response.JSON(' . $table['name'] . ', session);
    }' : '') . '
 }';
+        }
     }
 
     function denoModel($table) {
@@ -55,7 +99,6 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
         $import = '';
         foreach ($table['data'] as $sql) {
             if (str_contains($sql['sql_attribute'], 'NOT NULL')) {
-
             } else {
                 $nullable[] = $sql['name'];
             }
@@ -80,7 +123,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                         $relations .= ',';
                     }
                     $relations .= "'$id'" . ':'
-                            . "'$value'";
+                        . "'$value'";
                     ++$f;
                 }
                 $relations .= ",'callback'" . ':()=>' . ucfirst($key) . "$" . '}';
@@ -205,3 +248,4 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
         fwrite($route, $route_write);
     }
 }
+
