@@ -137,9 +137,9 @@ class setup
         return $this;
     }
 
-    public function deno_set()
+    public function deno_set($param)
     {
-        (new denoset($this->table, $this->json_set))->denoset();
+        (new denoset($this->table, $this->json_set, param: $param))->denoset();
         echo "Deno Build\n";
         return $this;
     }
