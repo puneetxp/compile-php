@@ -129,9 +129,8 @@ class setup {
         echo "PHP Build\n";
         return $this;
     }
-
-    public function deno_set() {
-        (new denoset($this->table, $this->json_set))->denoset();
+    public function deno_set($param) {
+        (new denoset($this->table, $this->json_set, param: $param))->denoset();
         echo "Deno Build\n";
         return $this;
     }
@@ -176,7 +175,7 @@ class setup {
         file_put_contents($_ENV["dir"] . '/config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
         return $this;
     }
-
+   
     public function migrate() {
         (new mysql())->migrate();
         return $this;
