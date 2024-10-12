@@ -8,8 +8,8 @@ class Compile {
     public array $files = [];
 
     public function __construct(
-            public $dir = 'View',
-            public $pre = __DIR__ . "/../../Resource",
+        public $dir = 'View',
+        public $pre = __DIR__ . "/../../Resource",
     ) {
         $this->config = json_decode(file_get_contents($this->pre . '/config.json'), TRUE);
         $dir = $this->pre . DIRECTORY_SEPARATOR . $this->dir;
@@ -20,9 +20,9 @@ class Compile {
         if (is_dir($dir)) {
             foreach (scandir($dir) as $file) {
                 if ($file == '.') {
-                    
+
                 } elseif ($file == "..") {
-                    
+
                 } elseif (is_file("$dir/$file")) {
                     $this->ComponentDir($dir, $file);
                 } elseif (is_dir("$dir/$file")) {

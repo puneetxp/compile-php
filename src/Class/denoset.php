@@ -2,9 +2,7 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class denoset
-{
-
+class denoset {
     public function __construct(public $table, public $json, public $param = "string[]") {}
 
     function denoController($table, $curd, $key = '') {

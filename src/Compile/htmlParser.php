@@ -224,10 +224,10 @@ class htmlParser {
     private function aliasoverwrite() {
         if (isset($this->activetag["tag"])) {
             if (strlen($this->activetag["tag"]) > 1 && $this->activetag["tag"][0] . $this->activetag["tag"][1] == "t-") {
-                $this->activetag["tag"] = "t-" . implode(".", array_map(fn($v) =>
-                                        in_array($v, $this->config['alias']) ?
-                                        str_replace($v, array_search($v, $this->config['alias']), $v) :
-                                        $v, explode(".", str_replace("t-", "", $this->activetag["tag"]))));
+                $this->activetag["tag"] = "t-" . implode(".", array_map(fn ($v) =>
+                in_array($v, $this->config['alias']) ?
+                    str_replace($v, array_search($v, $this->config['alias']), $v) :
+                    $v, explode(".",  str_replace("t-", "", $this->activetag["tag"]))));
             }
         }
     }
