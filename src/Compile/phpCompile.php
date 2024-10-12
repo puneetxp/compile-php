@@ -14,21 +14,24 @@ class phpCompile {
             $parameter = implode(",", (array_map(
                             fn($value, $key) =>
                             '$' . "$key = " .
-                            (is_array($value) || is_object($value) ?
+                            (is_array($value) || is_null($value) || is_object($value) ?
                             var_export($value, true) : (preg_match("/^[0-9]*$/", $value) ? $value : ('"' . "$value" . '"'))),
                             array_values($value->parameter),
                             array_keys($value->parameter)
             )));
-            index::createfile(
-                    $this->destination . DIRECTORY_SEPARATOR . $index . ".php",
-                    "<?php namespace " .
+            $write = "<?php namespace " .
                     str_replace('/', '\\', $value->directory) . "; " .
                     implode("", array_map(fn($value) => "use view\\" . str_replace(".", "\\", $value) . "; ", $value->t_tag)) .
                     "class $value->filename { public function __construct(" .
                     ' $data = [], $attribute = [], $child = "",' .
                     $parameter . ")  {?> " .
                     preg_replace("/\{\{([\s\S]*?)\}\}/m", '<?= ' . "$1" . ' ?>', $this->tostring($value->html->tags))
-                    . "<?php }}"
+                    . "<?php }}";
+            $write = str_replace("?> <?php", "", $write);
+            $write = str_replace("?><?php", "", $write);
+            index::createfile(
+                    $this->destination . DIRECTORY_SEPARATOR . $index . ".php",
+                    $write
             );
         }
     }
@@ -52,11 +55,8 @@ class phpCompile {
                                             str_replace(':', '', $k) . ": " .
                                             (is_array($value['value']) || is_object($value['value']) ? var_export($value['value'], true) : (preg_match("/\d/", $value['value']) ? $value['value'] : ($value['quote'] . $value['value'] . $value['quote']))) . ",",
                                             array_keys($y),
-                                            $y
-                                    )
-                            );
-                        }
-                        $y = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] != ":"), ARRAY_FILTER_USE_KEY);
+                                            index::createfile(
+                                                $this->destination . DIRECTORY_SEPARATOR . $index . ".php",fn($x) => count(str_split($x)) && (str_split($x)[0] != ":"), ARRAY_FILTER_USE_KEY);
                         if (count($y)) {
                             $native = implode('', array_map(fn($key, $value) => $key . '=' . $value["quote"] . $value["value"] . $value["quote"], array_keys($y), $y));
                         }
@@ -68,7 +68,7 @@ class phpCompile {
                             "attribute: " . $native
                             . ");?>";
                 } elseif (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "f-") {
-                    $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn($value) => $value["value"], $tag['attribute']), $this->tostring($tag['childern'] ?? []));
+                    $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn($value) => $value["value"], $tag['attribute'] ?? []), $this->tostring($tag['childern'] ?? []));
                     /*                    $string .= "<?php new $x(" . "child: function(){?>" .
                       ($this->tostring($tag['childern'] ?? []) ?? '') .
                       "<?php }," . $parameter .
@@ -124,7 +124,16 @@ class phpCompile {
         } elseif ($tagname == "find") {
             return str_replace([], [], $html);
         } elseif ($tagname == "if") {
-            return "<?php if($" . $attribute["condition"] . "){ ?>" .
+
+            return "<?php if(" . $attribute["condition"] . "){ ?>" .
+                    $html .
+                    "<?php } ?>";
+        } elseif ($tagname == "elseif") {
+            return "<?php elseif(" . $attribute["condition"] . "){ ?>" .
+                    $html .
+                    "<?php } ?>";
+        } elseif ($tagname == "else") {
+            return "<?php else { ?>" .
                     $html .
                     "<?php } ?>";
         }
