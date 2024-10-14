@@ -42,7 +42,7 @@ class setup {
         $this->table_set();
         //deno
         if (in_array('deno', $this->json_set['back-end'])) {
-            $this->deno_set();
+            $this->deno_set($this->table, $this->json_set);
             echo "Deno Build\n";
         }
         //php
