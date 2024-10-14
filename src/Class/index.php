@@ -148,9 +148,9 @@ class index {
                     'datatype' => 'number',
                     ...(isset($relation["default"]) ? ["default" => $relation["default"]] : []),
                     ...(isset($relation["sql_attribute"]) ? ["sql_attribute" => $relation["sql_attribute"]] : []),
-                    'relations' => [$this->all[$r]['name'] => $rx]
+                    'relations' => [isset($relation['alias']) ? str_replace("_id", "", $relation['alias']) : $this->all[$r]['name'] => $rx]
                 ];
-                $this->table['relations'][$this->all[$r]['name']] = $rx;
+                $this->table['relations'][isset($relation['alias']) ? str_replace("_id", "", $relation['alias']) : $this->all[$r]['name']] = $rx;
             }
         }
         return $this;
