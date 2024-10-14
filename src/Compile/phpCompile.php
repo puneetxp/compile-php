@@ -112,34 +112,31 @@ class phpCompile {
             }
             return $string;
         }
-
-        public
-
-        function phpFunction(string $tagname, array $attribute, string $html) {
-            if ($tagname == "for") {
-                return "<?php foreach($" . $attribute['array'] . " as $" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
-            } elseif ($tagname == "find2d") {
-                /*
-                  <?= $array[array_search($find, array_column($array,$col))][$getvalue] ?>
-                 */
-                return "<?= $" . $attribute['array'] . "[array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . ",'" . $attribute["col"] . "'))][" . $attribute['getvalue'] . "] ?>";
-            } elseif ($tagname == "find") {
-                return str_replace([], [], $html);
-            } elseif ($tagname == "if") {
-
-                return "<?php if(" . $attribute["condition"] . "){ ?>" .
-                        $html .
-                        "<?php } ?>";
-            } elseif ($tagname == "elseif") {
-                return "<?php elseif(" . $attribute["condition"] . "){ ?>" .
-                        $html .
-                        "<?php } ?>";
-            } elseif ($tagname == "else") {
-                return "<?php else { ?>" .
-                        $html .
-                        "<?php } ?>";
-            }
-        }
-
     }
-    
+
+    public function phpFunction(string $tagname, array $attribute, string $html) {
+        if ($tagname == "for") {
+            return "<?php foreach($" . $attribute['array'] . " as $" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
+        } elseif ($tagname == "find2d") {
+            /*
+              <?= $array[array_search($find, array_column($array,$col))][$getvalue] ?>
+             */
+            return "<?= $" . $attribute['array'] . "[array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . ",'" . $attribute["col"] . "'))][" . $attribute['getvalue'] . "] ?>";
+        } elseif ($tagname == "find") {
+            return str_replace([], [], $html);
+        } elseif ($tagname == "if") {
+
+            return "<?php if(" . $attribute["condition"] . "){ ?>" .
+                    $html .
+                    "<?php } ?>";
+        } elseif ($tagname == "elseif") {
+            return "<?php elseif(" . $attribute["condition"] . "){ ?>" .
+                    $html .
+                    "<?php } ?>";
+        } elseif ($tagname == "else") {
+            return "<?php else { ?>" .
+                    $html .
+                    "<?php } ?>";
+        }
+    }
+}
