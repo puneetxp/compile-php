@@ -141,7 +141,7 @@ class index {
                 $r = [];
                 is_array($relation) ? $r['name'] = $relation['name'] : $r['name'] = $relation;
                 $r = array_search($r['name'], array_column($this->all, 'name'));
-                $rx = ['table' => $this->all[$r]['table'], 'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id', 'key' => 'id'];
+                $rx = ['table' => $this->all[$r]['table'], 'callback' => $this->all[$r]['name'], 'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id', 'key' => 'id'];
                 $this->table["data"][] = [
                     'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id',
                     'mysql_data' => 'bigint UNSIGNED',
