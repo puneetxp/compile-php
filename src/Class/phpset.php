@@ -61,16 +61,20 @@ class phpset {
                 $relations .= "'$key'=>[";
                 $f = 0;
                 foreach ($table['relations'][$key] as $id => $value) {
-                    if ($f == 0 || $f == count($table['relations'][$key])) {
-                        $relations .= '';
+                    if ($id == "callback") {
+                        $relations .= ",'callback'" . '=>' . ucfirst($key) . "::class" . ']';
+                        ++$f;
                     } else {
-                        $relations .= ',';
+                        if ($f == 0 || $f == count($table['relations'][$key])) {
+                            $relations .= '';
+                        } else {
+                            $relations .= ',';
+                        }
+                        $relations .= "'$id'" . '=>'
+                                . "'$value'";
+                        ++$f;
                     }
-                    $relations .= "'$id'" . '=>'
-                            . "'$value'";
-                    ++$f;
                 }
-                $relations .= ",'callback'" . '=>' . ucfirst($key) . "::class" . ']';
                 ++$t;
             }
             $relations .= ']';
