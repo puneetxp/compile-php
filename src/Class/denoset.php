@@ -119,7 +119,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                     if ($id == "callback") {
                         $c = true;
                         $relations .= ",'callback'" . ':()=>' . ucfirst($value) . "$" . '}';
-                        $import[] = "import { " . ucfirst($key) . "$ } from './" . ucfirst($key) . ".ts';";
+                        $import[] = "import { " . ucfirst($value) . "$ } from './" . ucfirst($value) . ".ts';";
                         ++$f;
                     } else {
                         if ($f == 0 || $f == count($table['relations'][$key])) {
