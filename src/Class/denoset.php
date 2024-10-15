@@ -96,7 +96,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
         $nullable = [];
         $import = [];
         foreach ($table['data'] as $sql) {
-            if (str_contains($sql['sql_attribute'], 'NOT NULL')) {
+            if (str_contains($sql['sql_attribute'], 'NOT NULL')) {  
             } else {
                 $nullable[] = $sql['name'];
             }
@@ -114,11 +114,12 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                 }
                 $relations .= "'$key':{";
                 $f = 0;
+                $c = false;
                 foreach ($table['relations'][$key] as $id => $value) {
                     if ($id == "callback") {
+                        $c = true;
                         $relations .= ",'callback'" . ':()=>' . ucfirst($value) . "$" . '}';
-                        $import[] = "import { " . ucfirst($key) . "$ } from './" . ucfirst($key) . ".ts';
-";
+                        $import[] = "import { " . ucfirst($key) . "$ } from './" . ucfirst($key) . ".ts';";
                         ++$f;
                     } else {
                         if ($f == 0 || $f == count($table['relations'][$key])) {
@@ -131,7 +132,10 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                         ++$f;
                     }
                 }
-
+                if ($c == false) {
+                    $relations .= ",'callback'" . ':()=>' . ucfirst($key) . "$" . '}';
+                    $import[] = "import { " . ucfirst($key) . "$ } from './" . ucfirst($key) . ".ts';";
+                }
                 ++$t;
             }
             $relations .= '}';
@@ -252,4 +256,3 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
         fwrite($route, $route_write);
     }
 }
-
