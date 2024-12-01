@@ -43,7 +43,6 @@ class phpCompile {
                 if (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "t-") {
                     $x = explode(".", str_replace("t-", "", $tag["tag"]));
                     $x = $x[count($x) - 1];
-
                     $parameter = '';
                     $native = '[]';
                     if (isset($tag['attribute'])) {
@@ -56,62 +55,63 @@ class phpCompile {
                                             str_replace(':', '', $k) . ": " .
                                             (is_array($value['value']) || is_object($value['value']) ? var_export($value['value'], true) : (preg_match("/\d/", $value['value']) ? $value['value'] : ($value['quote'] . $value['value'] . $value['quote']))) . ",",
                                             array_keys($y),
-                                            $y)
-                            );
+                                            $y
+                            ));
+                            if (count($y)) {
+                                $native = implode('', array_map(fn($key, $value) => $key . '=' . $value["quote"] . $value["value"] . $value["quote"], array_keys($y), $y));
+                            }
                         }
-                        $a = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] !== ":"), ARRAY_FILTER_USE_KEY);
-                        if (count($a)) {
-                            $native = implode('', array_map(fn($key, $value) => $key . '=' . $value["quote"] . $value["value"] . $value["quote"], array_keys($y), $y));
+                        $string .= "<?php new $x(" . "child: function() use (" . ' $attribute, $data , $child ' . implode('', array_map(fn($key) => ", $" . $key, array_keys($this->file->parameter ?? []))) . " ) {?>" .
+                                ($this->tostring($tag['childern'] ?? []) ?? '') .
+                                "<?php }," .
+                                $parameter .
+                                "attribute: " . $native
+                                . ");?>";
+                    } elseif (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "f-") {
+                        $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn($value) => $value["value"], $tag['attribute'] ?? []), $this->tostring($tag['childern'] ?? []));
+                        /*                    $string .= "<?php new $x(" . "child: function(){?>" .
+                          ($this->tostring($tag['childern'] ?? []) ?? '') .
+                          "<?php }," . $parameter .
+                          "attribute: " . $native .
+                          ")?>";
+                         */
+                    } elseif ($tag["tag"] == "slot") {
+                        $string .= '<?php is_callable($child) ? $child() : $child ?>';
+                    } else {
+                        $string .= "<" . $tag["tag"];
+                        foreach (($tag["attribute"] ?? []) as $key => $value) {
+                            //print_r($key);
+                            //print_r($value);
+                            if (str_split($key)[0] !== ':') {
+                                $string .= " " . $key . ($value["value"] != "" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
+                            } else {
+                                $string .= " " . str_replace(":", "", $key) . "= " . ($value["quote"] ?? "") . "<?=" . ($value["value"] ?? "") . "?>" . ($value["quote"] ?? "");
+                            }
                         }
-                    }
-                    $string .= "<?php new $x(" . "child: function() use (" . ' $attribute, $data , $child ' . implode('', array_map(fn($key) => ", $" . $key, array_keys($this->file->parameter ?? []))) . " ) {?>" .
-                            ($this->tostring($tag['childern'] ?? []) ?? '') .
-                            "<?php }," .
-                            $parameter .
-                            "attribute: " . $native
-                            . ");?>";
-                } elseif (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "f-") {
-                    $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn($value) => $value["value"], $tag['attribute'] ?? []), $this->tostring($tag['childern'] ?? []));
-                    /*                    $string .= "<?php new $x(" . "child: function(){?>" .
-                      ($this->tostring($tag['childern'] ?? []) ?? '') .
-                      "<?php }," . $parameter .
-                      "attribute: " . $native .
-                      ")?>";
-                     */
-                } elseif ($tag["tag"] == "slot") {
-                    $string .= '<?php is_callable($child) ? $child() : $child ?>';
-                } else {
-                    $string .= "<" . $tag["tag"];
-                    foreach (($tag["attribute"] ?? []) as $key => $value) {
-                        if (str_split($key)[0] !== ':') {
-                            $string .= " " . $key . ($value["value"] != "" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
+                        if (isset($tag["case"])) {
+                            if ($tag["case"] === "self") {
+                                $string .= "/>";
+                            }
+                            if ($tag["case"] === "noclose") {
+                                $string .= ">";
+                            }
                         } else {
-                            $string .= " " . str_replace(":", "", $key) . "= " . ($value["quote"] ?? "") . "<?=" . ($value["value"] ?? "") . "?>" . ($value["quote"] ?? "");
-                        }
-                    }
-                    if (isset($tag["case"])) {
-                        if ($tag["case"] === "self") {
-                            $string .= "/>";
-                        }
-                        if ($tag["case"] === "noclose") {
                             $string .= ">";
                         }
-                    } else {
-                        $string .= ">";
-                    }
-                    if (isset($tag['childern']) && $tag['childern']) {
-                        $string .= $this->tostring($tag['childern']);
-                    }
-                    if (!isset($tag['case']) && isset($tag["tag"]) && $tag["tag"] !== "") {
-                        $string .= "</" . $tag["tag"] . ">";
+                        if (isset($tag['childern']) && $tag['childern']) {
+                            $string .= $this->tostring($tag['childern']);
+                        }
+                        if (!isset($tag['case']) && isset($tag["tag"]) && $tag["tag"] !== "") {
+                            $string .= "</" . $tag["tag"] . ">";
+                        }
                     }
                 }
+                if (isset($tag['string'])) {
+                    $string .= $tag['string'];
+                }
             }
-            if (isset($tag['string'])) {
-                $string .= $tag['string'];
-            }
+            return $string;
         }
-        return $string;
     }
 
     public function phpFunction(string $tagname, array $attribute, string $html) {

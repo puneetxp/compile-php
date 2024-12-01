@@ -40,7 +40,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
    }' : '') .
                     (in_array("p", $curd) ? '
    static async upsert(session: Session): Promise<Response> {
-      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.create(await session.req.json());
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.insert((await session.req.json()).data);
       return response.JSON( ' . $table['name'] . ' , session);
    }' : '') .
                     (in_array("d", $curd) ? '
@@ -80,7 +80,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
    }' : '') .
                     (in_array("p", $curd) ? '
    static async upsert(session: Session): Promise<Response> {
-      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.create(await session.req.json());
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$.insert((await session.req.json()).data);
       return response.JSON(' . $table['name'] . ', session);
    }' : '') .
                     (in_array("d", $curd) ? '
@@ -257,4 +257,3 @@ export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" 
         fwrite($route, $route_write);
     }
 }
-
