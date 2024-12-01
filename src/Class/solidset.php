@@ -2,28 +2,100 @@
 
 namespace Puneetxp\CompilePhp\Class;
 
-class solidset {
+class solidset
+{
 
-    public function __construct(public $table, public $json) {
+    public function __construct(public $table, public $json)
+    {
         $this->set();
     }
 
-    public function set() {
+    public function set()
+    {
         foreach ($this->table as $item) {
             $Interface_write = index::Interface_set($item);
             $solidjs = '/solidjs/src/shared/';
             $Interface = index::fopen_dir($_ENV["dir"] . $solidjs . 'Interface/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             fwrite($Interface, $Interface_write);
+
+            /*
             $solidstore = index::fopen_dir($_ENV["dir"] . $solidjs . 'Store/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             $solidstore_write = solidset::SolidTsStore($item);
             fwrite($solidstore, $solidstore_write);
             $solidservice = index::fopen_dir($_ENV["dir"] . $solidjs . 'Service/' . ucfirst('model/') . ucfirst($item['name']) . '.ts');
             $solidservice_write = solidset::SolidServicesTs($item);
             fwrite($solidservice, $solidservice_write);
+*/
         }
+        $this->Service_set();
+        $this->solid_run();
     }
 
-    public static function SolidTsStore($table) {
+    public function solid_run()
+    {
+        $table = array_map(fn($value) => $value['name'], $this->table);
+        $import = array_map(fn($value) => "import { ".ucwords($value)."Service } from './Service/Services';", $table);
+        $run = array_map(fn($value) => ucwords($value)."Service.checkinit();", $table);
+        $x = '
+import { isLogin } from "./guard/all";
+import { indexdb } from "./indexdb";
+'.
+implode("
+", $import).
+'
+export const tables: string[] = ' . json_encode(array_values($table)) . ';
+export class run {
+    set = false;
+    constructor() {
+        isLogin()
+            ? this.dbset().then(() => {
+                this.set = true;
+                //  loginset(true);
+            })
+            : (
+                indexdb.The_clearData(),
+                this.set = true
+                //  loginset(false)
+            )
+        /*
+        login.login$.subscribe(i => {
+            i
+        });
+        */
+    }
+    async dbset() {
+'.
+
+implode("
+", $run).
+'
+        AccountService.checkinit();
+    }
+}';
+        $solidjs = '/solidjs/src/shared/';
+        $Interface = index::fopen_dir($_ENV["dir"] . $solidjs . 'run.ts');
+        fwrite($Interface, $x);
+    }
+    public function Service_set()
+    {
+        $solidjs = '/solidjs/src/shared/';
+        $x = 'import { ModelService } from "./Service";';
+        $import = [];
+        foreach ($this->table as $item) {
+            $Name = ucfirst($item['name']);
+            $import[] = 'import { ' . $Name . ' } from "../Interface/Model/' . $Name . '";';
+            $service[] = 'export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
+    .seTable("' . $item['name'] . '")
+    .seturl("api/' . $item['name'] . '");';
+        }
+        $solidservice = index::fopen_dir($_ENV["dir"] . $solidjs . 'Service/Services.ts');
+        $solidservice_write = $x . implode("
+", $import) . implode("
+", $service);
+        fwrite($solidservice, $solidservice_write);
+    }
+    public static function SolidTsStore($table)
+    {
         $Name = ucfirst($table['name']);
         $names = $table['table'];
         $dir = "../../";
@@ -68,7 +140,8 @@ class solidset {
     export { " . $Name . "Store };";
     }
 
-    public static function SolidServicesTs($table) {
+    public static function SolidServicesTs($table)
+    {
         $Name = ucfirst($table['name']);
         $name = $table['name'];
         $dir = "../../";
@@ -84,8 +157,10 @@ class solidset {
     class Service {
       constructor(public url: string) {
       }
+      date !: Date;
       async all() {
         const req: " . $Name . "[] = await JFetch(this.url);
+        this.date = new Date();
         req && " . $Name . "Store.upsert(req);
       }
       async create(body: any) {
