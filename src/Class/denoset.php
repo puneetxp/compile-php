@@ -155,18 +155,23 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
         }
         $fillable .= implode("','", $fillable_array);
         $fillable .= "']";
-        return "import { Model, relation } from '../../dep.ts';
+        return "import { Model } from '../../dep.ts';
 " . implode("
 ", array_unique($import)) . "
+
 class Standard extends Model<" . ucfirst($table["name"]) . "> {
-  name = '" . $table['name'] . "';
-  table = '" . $table['table'] . "';
-  nullable: string[] = " . json_encode($nullable) . ";
-  fillable: string[] = " . $fillable . ";
-  model: string[] = " . json_encode(array_column($table['data'], 'name')) . ";
-  relations:  Record<string,  relation>  = " . ($relations == '' ? '[]' : $relations) . ";
+    constructor() {
+        super(
+            '" . $table['name'] . "',
+            '" . $table['table'] . "',
+            " . json_encode($nullable) . ",
+            " . $fillable . ",
+            " . json_encode(array_column($table['data'], 'name')).",
+            " . ($relations == '' ? '[]' : $relations)."
+        );
+    }
 }
-export const " . ucfirst($table['name']) . "$: Standard = new Standard().set('" . $table['table'] . "');";
+export const " . ucfirst($table['name']) . "$: Standard = new Standard();";
     }
 
     public $For = [];
