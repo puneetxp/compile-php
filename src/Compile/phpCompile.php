@@ -1,5 +1,4 @@
 <?php
-
 namespace Puneetxp\CompilePhp\Compile;
 
 use Puneetxp\CompilePhp\Class\index;
@@ -14,7 +13,7 @@ class phpCompile
             $parameter = implode(",", (array_map(
                 fn($value, $key) =>
                 '$' . "$key = " .
-                    (is_array($value) || is_object($value) ?
+                    (is_array($value) || is_object($value) || is_null($value) ?
                         var_export($value, true) : (preg_match("/^[0-9]*$/", $value)
                             ? $value
                             : ('"' . "$value" . '"'))),
@@ -70,7 +69,7 @@ class phpCompile
                         "attribute: " . $native
                         . ");?>";
                 } elseif (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "f-") {
-                    $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn($value) => $value["value"], $tag['attribute']), $this->tostring($tag['childern'] ?? []));
+                    $string .= $this->phpFunction(str_replace("f-", "", $tag["tag"]), array_map(fn($value) => $value["value"], $tag['attribute'] ?? []), $this->tostring($tag['childern'] ?? []));
                     /*                    $string .= "<?php new $x(" . "child: function(){?>" .
                        ($this->tostring($tag['childern'] ?? []) ?? '') .
                        "<?php }," . $parameter .
@@ -82,8 +81,6 @@ class phpCompile
                 } else {
                     $string .= "<" . $tag["tag"];
                     foreach (($tag["attribute"] ?? []) as $key => $value) {
-                        //print_r($key);
-                        //print_r($value);
                         if (str_split($key)[0] !== ':') {
                             $string .= " " . $key . ($value["value"] != "" ? ("=" . ($value["quote"] ?? "") . ($value["value"] ?? "") . ($value["quote"] ?? "") . " ") : "");
                         } else {
@@ -112,7 +109,7 @@ class phpCompile
                 $string .= $tag['string'];
             }
         }
-        return $string;
+        return str_replace('?><?php','',$string);
     }
     public function phpFunction(string $tagname, array $attribute, string $html)
     {
@@ -126,9 +123,16 @@ class phpCompile
         } elseif ($tagname == "find") {
             return  str_replace([], [], $html);
         } elseif ($tagname == "if") {
-            return "<?php if($" . $attribute["condition"] . "){ ?>" .
+            return "<?php if(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"])  . "){ ?>" .
                 $html .
                 "<?php } ?>";
+        } elseif ($tagname == "elseif") {
+            return "<?php elseif(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"])  . "){ ?>" .
+                $html ."<?php } ?>";
+        } elseif ($tagname == "else") {
+            return "<?php else { ?>
+            $html
+            <?php } ?>";
         }
     }
 }
