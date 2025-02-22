@@ -122,6 +122,8 @@ class phpCompile
             return  "<?= $" . $attribute['array'] . "[array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . ",'" . $attribute["col"] . "'))][" . $attribute['getvalue'] . "] ?>";
         } elseif ($tagname == "find") {
             return  str_replace([], [], $html);
+        } elseif ($tagname == "env") {
+            return  '<?= $_ENV["'.$attribute["value"].'"] ?>';
         } elseif ($tagname == "if") {
             return "<?php if(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"])  . "){ ?>" .
                 $html .

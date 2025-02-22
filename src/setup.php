@@ -13,7 +13,8 @@ use Puneetxp\CompilePhp\Class\{
 };
 use Puneetxp\CompilePhp\compile\compilephp;
 
-class setup {
+class setup
+{
 
     public $pattern_route = '/\$route.*?;/';
     public $pattern_use_only = '/use.*?\w;/';
@@ -27,7 +28,8 @@ class setup {
     public $table;
     public $roles = ['isuper'];
 
-    public function __construct($dir = __DIR__ . "/../../") {
+    public function __construct($dir = __DIR__ . "/../../")
+    {
         $_ENV["dir"] = $dir;
         $this->route_use_array['The\\'] = ["Route"];
         $this->json_set = json_decode(file_get_contents($_ENV["dir"] . '/config.json'), TRUE);
@@ -38,7 +40,8 @@ class setup {
         }
     }
 
-    public function config() {
+    public function config()
+    {
         $this->table_set();
         //deno
         if (in_array('deno', $this->json_set['back-end'])) {
@@ -68,7 +71,8 @@ class setup {
         return $this;
     }
 
-    public function add_table() {
+    public function add_table()
+    {
         $j = [];
         foreach (glob($_ENV["dir"] . "/database/Model/Additional/*.json") as $file) {
             $j[] = json_decode(file_get_contents($file), true);
@@ -83,7 +87,8 @@ class setup {
         return $this;
     }
 
-    public function resetTable() {
+    public function resetTable()
+    {
         $x = [];
         for ($i = 0; $i < count($this->table); ++$i) {
             $x[$this->table[$i]['name']] = $this->table[$i];
@@ -91,7 +96,8 @@ class setup {
         $this->table = $x;
     }
 
-    public function table_set() {
+    public function table_set()
+    {
         foreach ($this->files as $key => $item) {
             if (isset($item['crud']['roles'])) {
                 if (is_array($item['crud']['roles'])) {
@@ -124,36 +130,42 @@ class setup {
         return $this;
     }
 
-    public function php_set() {
+    public function php_set()
+    {
         new phpset($this->table, $this->json_set);
         echo "PHP Build\n";
         return $this;
     }
-    public function deno_set($param) {
+    public function deno_set($param)
+    {
         (new denoset($this->table, $this->json_set, param: $param))->denoset();
         echo "Deno Build\n";
         return $this;
     }
 
-    public function angular_set() {
+    public function angular_set()
+    {
         (new angularset($this->table, $this->json_set))->angularset();
         echo "Angular Build\n";
         return $this;
     }
 
-    public function vuejs_set() {
+    public function vuejs_set()
+    {
         new vueset($this->table, $this->json_set);
         echo "Angular Build\n";
         return $this;
     }
 
-    public function solidjs_set() {
+    public function solidjs_set()
+    {
         new solidset($this->table, $this->json_set);
         echo "Solid Build\n";
         return $this;
     }
 
-    public function write() {
+    public function write()
+    {
         foreach ($this->route_use_array as $key => $value) {
             $this->route_use_multiple .= "use $key{" . implode(',', array_unique($value)) . "}; ";
         }
@@ -175,13 +187,15 @@ class setup {
         file_put_contents($_ENV["dir"] . '/config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
         return $this;
     }
-   
-    public function migrate() {
+
+    public function migrate()
+    {
         (new mysql())->migrate();
         return $this;
     }
 
-    public function migratealter() {
+    public function migratealter()
+    {
         mysql::migrateAlter();
         return $this;
     }
