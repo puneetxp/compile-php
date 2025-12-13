@@ -35,41 +35,37 @@ class solidset
     {
         $table = array_map(fn($value) => $value['name'], $this->table);
         $import = array_map(fn($value) => "import { ".ucwords($value)."Service } from './Service/Services';", $table);
-        $run = array_map(fn($value) => ucwords($value)."Service.checkinit();", $table);
+        $run = array_map(fn($value) => ucwords($value)."Service.checkinit(),", $table);
         $x = '
 import { isLogin } from "./guard/all";
 import { indexdb } from "./indexdb";
+import { createSignal, createMemo } from "solid-js";
 '.
 implode("
 ", $import).
 '
 export const tables: string[] = ' . json_encode(array_values($table)) . ';
+
+const [set, setSet] = createSignal<string | false>(false);
 export class run {
-    set = false;
-    constructor() {
-        isLogin()
-            ? this.dbset().then(() => {
-                this.set = true;
-                //  loginset(true);
-            })
-            : (
-                indexdb.The_clearData(),
-                this.set = true
-                //  loginset(false)
-            )
-        /*
-        login.login$.subscribe(i => {
-            i
-        });
-        */
-    }
-    async dbset() {
-'.
+  set = createMemo(() => set());
+  constructor() {
+    isLogin()
+      ? this.dbset()
+        .then(() => {
+          setSet(false);
+        })
+      : (indexdb.The_clearData(), setSet(false));
+  }
+  async dbset() {
+    await Promise.all([
+      '.
 
 implode("
-", $run).
+      ", $run).
 '
-        AccountService.checkinit();
+      AccountService.checkinit()
+      ])
     }
 }';
         $solidjs = '/solidjs/src/shared/';

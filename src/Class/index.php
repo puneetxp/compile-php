@@ -14,9 +14,9 @@ class index {
             }
         }
         return "export interface " . ucfirst($table['name']) . " {
-       " . implode(',
-       ', $x) . '
-    }';
+   " . implode(',
+   ', $x) . '
+}';
     }
 
     static function php_wrapper($data) {
