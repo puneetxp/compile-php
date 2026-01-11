@@ -3,3 +3,4 @@
 /.vscode/
 .history
 *.log
+*.DS_Store
