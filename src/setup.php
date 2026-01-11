@@ -9,7 +9,10 @@ use Puneetxp\CompilePhp\Class\{
     phpset,
     solidset,
     vueset,
-    angularset
+    angularset,
+    dotnetset,
+    golangset,
+    javaspringset
 };
 
 class setup {
@@ -47,6 +50,19 @@ class setup {
         //php
         if (in_array('php', $this->json_set['back-end'])) {
             $this->php_set();
+        }
+        //dotnet
+        if (in_array('dotnet', $this->json_set['back-end'])) {
+            $this->dotnet_set();
+            echo "DotNet Build\n";
+        }
+        //golang
+        if (in_array('golang', $this->json_set['back-end'])) {
+            $this->golang_set();
+        }
+        //spring
+        if (in_array('spring', $this->json_set['back-end'])) {
+            $this->javaspring_set();
         }
         //angular
         if (in_array('angular', $this->json_set['front-end'])) {
@@ -182,6 +198,22 @@ class setup {
 
     public function migratealter() {
         mysql::migrateAlter();
+        return $this;
+    }
+
+    public function dotnet_set() {
+        new dotnetset($this->table, $this->json_set);
+        return $this;
+    }
+
+    public function golang_set() {
+        new golangset($this->table, $this->json_set);
+        echo "Golang Build\n";
+        return $this;
+    }
+
+    public function javaspring_set() {
+        new javaspringset($this->table, $this->json_set);
         return $this;
     }
 }
