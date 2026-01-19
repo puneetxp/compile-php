@@ -8,40 +8,80 @@ class phpCompile
     public $file;
     public function __construct(private string $destination, private $files)
     {
-        foreach ($this->files as $index => $value) {
-            $this->file = $value;
-            $templateParams = (array) ($value->parameter ?? []);
-            $hasPageProp = array_key_exists('page', $templateParams);
-            $parameterParts = array_map(
-                fn($paramValue, $paramKey) =>
-                '$' . "$paramKey = " .
-                    (is_array($paramValue) || is_object($paramValue) || is_null($paramValue) ?
-                        var_export($paramValue, true) : (preg_match("/^[0-9]*$/", $paramValue)
-                            ? $paramValue
-                            : ('"' . "$paramValue" . '"'))),
-                array_values($templateParams),
-                array_keys($templateParams)
-            );
-            $constructorParams = [' $data = []', ' $attribute = []', ' $child = ""'];
-            if (!$hasPageProp) {
-                $constructorParams[] = ' $page = []';
-            }
-            if (!empty($parameterParts)) {
-                $constructorParams = array_merge($constructorParams, $parameterParts);
-            }
-            $parameter = implode(',', $constructorParams);
-            $name = $value->filename. "Page";
+        foreach ($this->files as $index => $template) {
+            $this->file = $template;
+            $constructorSignature = $this->buildConstructorSignature($template);
+            $classContents = $this->buildClassContents($template, $constructorSignature);
+
             index::createfile(
-                $this->destination . DIRECTORY_SEPARATOR . $index . ".php",
-                "<?php namespace " .
-                    str_replace('/', '\\', $value->directory) . "; " .
-                    implode("", array_map(fn($value) => "use view\\" . str_replace(".", "\\", $value) . "Page; ", array_unique($value->t_tag ?? []))) .
-                    "class $name { public function __construct(" .
-                    $parameter . ")  {?> " .
-                    preg_replace("/\{\{([\s\S]*?)\}\}/m", '<?= ' . "$1" . ' ?>',  $this->tostring($value->html->tags))
-                    . "<?php }}"
+                $this->destination . DIRECTORY_SEPARATOR . $index . "Page.php",
+                $classContents
             );
         }
+    }
+
+    private function buildConstructorSignature(object $template): string
+    {
+        $templateParams = (array) ($template->parameter ?? []);
+        $hasPageParam = array_key_exists('page', $templateParams);
+
+        $parameterParts = array_map(
+            fn($paramValue, $paramKey) => '$' . $paramKey . ' = ' . $this->exportParameterDefault($paramValue),
+            array_values($templateParams),
+            array_keys($templateParams)
+        );
+
+        $constructorParams = [' $data = []', ' $attribute = []', ' $child = ""'];
+        if (!$hasPageParam) {
+            $constructorParams[] = ' $page = []';
+        }
+        if (!empty($parameterParts)) {
+            $constructorParams = array_merge($constructorParams, $parameterParts);
+        }
+
+        return implode(',', $constructorParams);
+    }
+
+    private function buildClassContents(object $template, string $constructorSignature): string
+    {
+        $namespace = str_replace('/', '\\', $template->directory);
+        $imports = $this->generateImports($template);
+        $className = $template->filename . "Page";
+        $body = preg_replace(
+            "/\{\{([\s\S]*?)\}\}/m",
+            '<?= ' . "$1" . ' ?>',
+            $this->tostring($template->html->tags)
+        );
+
+        return "<?php namespace $namespace; $imports class $className { public function __construct(" .
+            $constructorSignature . ")  {?> " .
+            $body .
+            "<?php }}";
+    }
+
+    private function generateImports(object $template): string
+    {
+        $imports = array_unique($template->t_tag ?? []);
+        return implode(
+            "",
+            array_map(
+                fn($value) => "use view\\" . str_replace(".", "\\", $value) . "Page; ",
+                $imports
+            )
+        );
+    }
+
+    private function exportParameterDefault($value): string
+    {
+        if (is_array($value) || is_object($value) || is_null($value)) {
+            return var_export($value, true);
+        }
+
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        return var_export($value, true);
     }
     public function tostring($file)
     {
@@ -64,13 +104,20 @@ class phpCompile
                     $native = '[]';
                     if (isset($tag['attribute'])) {
                         $y =  array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] == ":"), ARRAY_FILTER_USE_KEY);
+                        $componentHasPage = false;
                         if (count($y)) {
                             $parameter = implode(
                                 '',
                                 array_map(
                                     fn($k, $value) =>
-                                    str_replace(':', '', $k) . ": " .
-                                        (is_array($value['value']) || is_object($value['value']) ? var_export($value['value'], true) : (preg_match("/\d/", $value['value']) ? $value['value'] : ($value['quote'] . $value['value'] . $value['quote']))) . ",",
+                                    (function($k, $value, &$componentHasPage) {
+                                        $prop = str_replace(':', '', $k);
+                                        if ($prop === 'page') {
+                                            $componentHasPage = true;
+                                        }
+                                        return $prop . ": " .
+                                            (is_array($value['value']) || is_object($value['value']) ? var_export($value['value'], true) : (preg_match("/\d/", $value['value']) ? $value['value'] : ($value['quote'] . $value['value'] . $value['quote']))) . ",";
+                                    })($k, $value, $componentHasPage),
                                     array_keys($y),
                                     $y
                                 )
@@ -78,10 +125,14 @@ class phpCompile
                         }
                         $y = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0]  != ":"), ARRAY_FILTER_USE_KEY);
                         if (count($y)) {
-                            $native =  implode('', array_map(fn($key, $value) => $key . '=' . $value["quote"] . $value["value"] . $value["quote"], array_keys($y), $y));
+                            $native = '[' . implode(',', array_map(
+                                fn($key, $value) => var_export($key, true) . ' => ' . var_export($value["value"], true),
+                                array_keys($y),
+                                $y
+                            )) . ']';
                         }
                     }
-                    if (!str_contains($parameter, 'page:')) {
+                    if (!($componentHasPage ?? false)) {
                         $parameter .= "page: \$page,";
                     }
                     $string .= "<?php new $className(" . "child: function() use (" . $closureUse . " ) {?>" .
