@@ -16,29 +16,71 @@ class angularset {
     function initservice($table) {
         $serviceconstruct = [];
         $serviceimport = [];
-        $servicerun = [];
+        $initializers = [];
         foreach ($table as $item) {
             $Name = ucfirst($item['name']);
-            $serviceimport[] = "import { " . $Name . "Service } from './Model/$Name.service';";
-            $serviceconstruct[] = "private " . $item['table'] . " : $Name" . "Service";
-            $servicerun[] = "await this." . $item['table'] . ".checkinit()";
+            $serviceimport[] = "import { " . $Name . "Service } from \"./Model/$Name.service\";";
+            $serviceconstruct[] = "    private " . $item['table'] . ": " . $Name . "Service";
+            $initializers[] = "        [\"" . $item['table'] . "\", () => this." . $item['table'] . ".checkinit()],";
         }
-        $write = "import { Injectable } from '@angular/core';" .
-                implode("\n", $serviceimport) . "
-import { IndexedDBService } from './indexed-db.service';
-import { tables } from '../db/tables';
+
+        $template = <<<'TS'
+import { Injectable } from "@angular/core";
+{{IMPORTS}}
+import { IndexedDBService } from "./indexed-db.service";
+import { tables } from "../db/tables";
+
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class RunService {
-  constructor(private indexdb: IndexedDBService," . implode(",\n", $serviceconstruct) . ") { }
+  private withTimeout<T>(promise: Promise<T>, name: string, timeoutMs = 5000) {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Timeout while initializing ${name}`));
+      }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeout]).finally(() => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    });
+  }
+
+  constructor(
+    private indexdb: IndexedDBService,
+{{CONSTRUCTOR_INJECTIONS}}
+  ) {}
+
   async run() {
-    this.indexdb.setDb('shopinfactorynew');
-    this.indexdb.setTable(tables);
-    " . implode(";\n", $servicerun) . "
+    try {
+      this.indexdb.setDb("shopinfactorynew");
+      this.indexdb.setTable(tables);
+      const initializers: Array<[string, () => Promise<unknown>]> = [
+{{INITIALIZERS}}
+      ];
+
+      for (const [name, init] of initializers) {
+        try {
+          await this.withTimeout(init(), name);
+        } catch (error) {
+          console.error(`RunService initialization failed for ${name}`, error);
+        }
+      }
+    } catch (error) {
+      console.error("RunService initialization failed", error);
+    }
   }
 }
-";
+TS;
+
+        $write = strtr($template, [
+            '{{IMPORTS}}' => implode("\n", $serviceimport),
+            '{{CONSTRUCTOR_INJECTIONS}}' => implode(",\n", $serviceconstruct),
+            '{{INITIALIZERS}}' => implode("\n", $initializers),
+        ]);
 
         fwrite(index::fopen_dir($_ENV["dir"] . "/angular/src/app/shared/Service/run.service.ts"), $write);
     }
@@ -70,8 +112,13 @@ export class RunService {
             $angular_config["projects"]["angular"]["architect"]["build"]["options"]["outputPath"] = $this->json["angular"]["outputPath"];
         }
         if (isset($this->json["angular"]["assets"])) {
-            $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"] = array_unique([...$angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"], ...$this->json["angular"]["assets"]]);
+            $existingAssets =& $angular_config["projects"]["angular"]["architect"]["build"]["options"]["assets"];
+            $existingStringAssets = array_values(array_filter($existingAssets, fn($asset) => is_string($asset)));
             foreach ($this->json["angular"]["assets"] as $value) {
+                if (!in_array($value, $existingStringAssets, true)) {
+                    $existingAssets[] = $value;
+                    $existingStringAssets[] = $value;
+                }
                 if ($value == "src/storage") {
                     symlink($_ENV["dir"] . "/storage/public", $_ENV["dir"] . "/angular/src/storage");
                 } else {

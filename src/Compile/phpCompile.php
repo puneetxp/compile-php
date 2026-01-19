@@ -10,23 +10,33 @@ class phpCompile
     {
         foreach ($this->files as $index => $value) {
             $this->file = $value;
-            $parameter = implode(",", (array_map(
-                fn($value, $key) =>
-                '$' . "$key = " .
-                    (is_array($value) || is_object($value) || is_null($value) ?
-                        var_export($value, true) : (preg_match("/^[0-9]*$/", $value)
-                            ? $value
-                            : ('"' . "$value" . '"'))),
-                array_values($value->parameter),
-                array_keys($value->parameter)
-            )));
+            $templateParams = (array) ($value->parameter ?? []);
+            $hasPageProp = array_key_exists('page', $templateParams);
+            $parameterParts = array_map(
+                fn($paramValue, $paramKey) =>
+                '$' . "$paramKey = " .
+                    (is_array($paramValue) || is_object($paramValue) || is_null($paramValue) ?
+                        var_export($paramValue, true) : (preg_match("/^[0-9]*$/", $paramValue)
+                            ? $paramValue
+                            : ('"' . "$paramValue" . '"'))),
+                array_values($templateParams),
+                array_keys($templateParams)
+            );
+            $constructorParams = [' $data = []', ' $attribute = []', ' $child = ""'];
+            if (!$hasPageProp) {
+                $constructorParams[] = ' $page = []';
+            }
+            if (!empty($parameterParts)) {
+                $constructorParams = array_merge($constructorParams, $parameterParts);
+            }
+            $parameter = implode(',', $constructorParams);
+            $name = $value->filename. "Page";
             index::createfile(
                 $this->destination . DIRECTORY_SEPARATOR . $index . ".php",
                 "<?php namespace " .
                     str_replace('/', '\\', $value->directory) . "; " .
-                    implode("", array_map(fn($value) => "use view\\" . str_replace(".", "\\", $value) . "; ", $value->t_tag)) .
-                    "class $value->filename { public function __construct(" .
-                    ' $data = [], $attribute = [], $child = "",' .
+                    implode("", array_map(fn($value) => "use view\\" . str_replace(".", "\\", $value) . "Page; ", array_unique($value->t_tag ?? []))) .
+                    "class $name { public function __construct(" .
                     $parameter . ")  {?> " .
                     preg_replace("/\{\{([\s\S]*?)\}\}/m", '<?= ' . "$1" . ' ?>',  $this->tostring($value->html->tags))
                     . "<?php }}"
@@ -36,11 +46,20 @@ class phpCompile
     public function tostring($file)
     {
         $string = "";
+        $closureUseVars = [' $attribute', ' $data', ' $child', ' $page'];
+        foreach (array_keys($this->file->parameter ?? []) as $paramKey) {
+            $var = ' $' . $paramKey;
+            if (!in_array($var, $closureUseVars, true)) {
+                $closureUseVars[] = $var;
+            }
+        }
+        $closureUse = implode(',', $closureUseVars);
         foreach ($file as $tag) {
             if (isset($tag["tag"]) && $tag["tag"] !== "") {
                 if (($tag["tag"][0] ?? '') . ($tag["tag"][1] ?? '') == "t-") {
                     $x = explode(".", str_replace("t-", "", $tag["tag"]));
                     $x = $x[count($x) - 1];
+                    $className = $x . "Page";
                     $parameter = '';
                     $native = '[]';
                     if (isset($tag['attribute'])) {
@@ -62,7 +81,10 @@ class phpCompile
                             $native =  implode('', array_map(fn($key, $value) => $key . '=' . $value["quote"] . $value["value"] . $value["quote"], array_keys($y), $y));
                         }
                     }
-                    $string .= "<?php new $x(" . "child: function() use (" . ' $attribute, $data , $child ' . implode('', array_map(fn($key) => ", $" . $key, array_keys($this->file->parameter ?? []))) . " ) {?>" .
+                    if (!str_contains($parameter, 'page:')) {
+                        $parameter .= "page: \$page,";
+                    }
+                    $string .= "<?php new $className(" . "child: function() use (" . $closureUse . " ) {?>" .
                         ($this->tostring($tag['childern'] ?? []) ?? '') .
                         "<?php }," .
                         $parameter .
@@ -110,11 +132,12 @@ class phpCompile
             }
         }
         return str_replace('?><?php','',$string);
-    }
+    }    
     public function phpFunction(string $tagname, array $attribute, string $html)
     {
         if ($tagname == "for") {
-            return  "<?php foreach($" . $attribute['array'] . " as $" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
+            $keyPart = isset($attribute['key']) ? '$' . $attribute['key'] . ' => ' : '';
+            return  "<?php foreach($" . $attribute['array'] . " as " . $keyPart . "$" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
         } elseif ($tagname == "find2d") {
             /*
                 <?= $array[array_search($find, array_column($array,$col))][$getvalue] ?>
