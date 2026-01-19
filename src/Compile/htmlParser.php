@@ -40,7 +40,7 @@ class htmlParser {
     private $debug = false;
     private $string = "";
 
-    public function parse(bool $debug = null) {
+    public function parse(?bool $debug = null) {
         $this->debug = $debug;
         while (
         $this->length > $this->key &&
@@ -199,7 +199,7 @@ class htmlParser {
         //print_r($this->html[$this->key]);
     }
 
-    private function closetag(bool $bool = false, string $print = null, $additionalattribute = []) {
+    private function closetag(bool $bool = false, ?string $print = null, $additionalattribute = []) {
         foreach ($additionalattribute as $key => $value) {
             $this->activetag[$key] = $value;
         }

@@ -60,7 +60,12 @@ class phpset {
                 }
                 $relations .= "'$key'=>[";
                 $f = 0;
+                $callback = null;
                 foreach ($table['relations'][$key] as $id => $value) {
+                    if ($id === 'callback') {
+                        $callback = $value;
+                        continue;
+                    }
                     if ($f == 0 || $f == count($table['relations'][$key])) {
                         $relations .= '';
                     } else {
@@ -70,7 +75,8 @@ class phpset {
                             . "'$value'";
                     ++$f;
                 }
-                $relations .= ",'callback'" . '=>' . ucfirst($key) . "::class" . ']';
+                $callbackClass = $callback ? ucfirst($callback) : ucfirst($key);
+                $relations .= ($f > 0 ? ',' : '') . "'callback'" . '=>' . $callbackClass . "::class" . ']';
                 ++$t;
             }
             $relations .= ']';
