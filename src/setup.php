@@ -9,7 +9,8 @@ use Puneetxp\CompilePhp\Class\{
     phpset,
     solidset,
     vueset,
-    angularset
+    angularset,
+    pythonset
 };
 
 class setup {
@@ -37,6 +38,11 @@ class setup {
         }
     }
 
+    public function python_set() {
+        (new pythonset($this->table, $this->json_set))->pythonset();
+        return $this;
+    }
+
     public function config() {
         $this->table_set();
         //deno
@@ -47,6 +53,11 @@ class setup {
         //php
         if (in_array('php', $this->json_set['back-end'])) {
             $this->php_set();
+        }
+        //python
+        if (in_array('python', $this->json_set['back-end'])) {
+            $this->python_set();
+            echo "Python Build\n";
         }
         //angular
         if (in_array('angular', $this->json_set['front-end'])) {
