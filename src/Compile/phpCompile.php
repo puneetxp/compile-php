@@ -106,22 +106,13 @@ class phpCompile
                         $y =  array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] == ":"), ARRAY_FILTER_USE_KEY);
                         $componentHasPage = false;
                         if (count($y)) {
-                            $parameter = implode(
-                                '',
-                                array_map(
-                                    fn($k, $value) =>
-                                    (function($k, $value, &$componentHasPage) {
-                                        $prop = str_replace(':', '', $k);
-                                        if ($prop === 'page') {
-                                            $componentHasPage = true;
-                                        }
-                                        return $prop . ": " .
-                                            (is_array($value['value']) || is_object($value['value']) ? var_export($value['value'], true) : (preg_match("/\d/", $value['value']) ? $value['value'] : ($value['quote'] . $value['value'] . $value['quote']))) . ",";
-                                    })($k, $value, $componentHasPage),
-                                    array_keys($y),
-                                    $y
-                                )
-                            );
+                            foreach ($y as $attrKey => $attrValue) {
+                                $prop = str_replace(':', '', $attrKey);
+                                if ($prop === 'page') {
+                                    $componentHasPage = true;
+                                }
+                                $parameter .= $prop . ": " . $this->formatBoundAttributeValue($attrValue) . ",";
+                            }
                         }
                         $y = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0]  != ":"), ARRAY_FILTER_USE_KEY);
                         if (count($y)) {
@@ -208,5 +199,21 @@ class phpCompile
             $html
             <?php } ?>";
         }
+
+    }
+
+    private function formatBoundAttributeValue(array $attribute): string
+    {
+        $value = $attribute['value'] ?? '';
+        if (is_array($value) || is_object($value)) {
+            return var_export($value, true);
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return 'null';
+        }
+
+        return $value;
     }
 }
