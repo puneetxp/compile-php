@@ -73,11 +73,7 @@ class phpCompile
 
     private function exportParameterDefault($value): string
     {
-        if (is_object($value)) {
-            $value = $this->convertObjectToArray($value);
-        }
-
-        if (is_array($value) || is_null($value)) {
+        if (is_array($value) || is_object($value) || is_null($value)) {
             return var_export($value, true);
         }
 
@@ -86,22 +82,6 @@ class phpCompile
         }
 
         return var_export($value, true);
-    }
-
-    private function convertObjectToArray(object $value): array
-    {
-        $arrayValue = [];
-        foreach ((array) $value as $key => $item) {
-            if (is_object($item)) {
-                $arrayValue[$key] = $this->convertObjectToArray($item);
-            } elseif (is_array($item)) {
-                $arrayValue[$key] = array_map(fn($inner) => is_object($inner) ? $this->convertObjectToArray($inner) : $inner, $item);
-            } else {
-                $arrayValue[$key] = $item;
-            }
-        }
-
-        return $arrayValue;
     }
     public function tostring($file)
     {
