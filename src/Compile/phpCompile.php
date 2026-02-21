@@ -123,7 +123,7 @@ class phpCompile
                     $parameter = '';
                     $native = '[]';
                     if (isset($tag['attribute'])) {
-                        $y =  array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] == ":"), ARRAY_FILTER_USE_KEY);
+                        $y = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] == ":"), ARRAY_FILTER_USE_KEY);
                         $componentHasPage = false;
                         if (count($y)) {
                             foreach ($y as $attrKey => $attrValue) {
@@ -134,7 +134,7 @@ class phpCompile
                                 $parameter .= $prop . ": " . $this->formatBoundAttributeValue($attrValue) . ",";
                             }
                         }
-                        $y = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0]  != ":"), ARRAY_FILTER_USE_KEY);
+                        $y = array_filter($tag['attribute'], fn($x) => count(str_split($x)) && (str_split($x)[0] != ":"), ARRAY_FILTER_USE_KEY);
                         if (count($y)) {
                             $native = '[' . implode(',', array_map(
                                 fn($key, $value) => var_export($key, true) . ' => ' . var_export($value["value"], true),
@@ -193,33 +193,39 @@ class phpCompile
                 $string .= $tag['string'];
             }
         }
-        return str_replace('?><?php','',$string);
-    }    
+        return str_replace('?><?php', '', $string);
+    }
     public function phpFunction(string $tagname, array $attribute, string $html)
     {
         if ($tagname == "for") {
             $keyPart = isset($attribute['key']) ? '$' . $attribute['key'] . ' => ' : '';
-            return  "<?php foreach($" . $attribute['array'] . " as " . $keyPart . "$" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
+            return "<?php foreach($" . $attribute['array'] . " as " . $keyPart . "$" . $attribute['value'] . " ){?> " . $html . " <?php }?>";
+        } elseif ($tagname == "page") {
+            $arr = $attribute['array'] ?? 'page["page_block"]';
+            $val = $attribute['value'] ?? 'block';
+            if (trim($html) === '') {
+                $html = '<div class="container"><?= $' . $val . '[\'value\'] ?></div>';
+            }
+            return "<?php foreach(array_filter($" . $arr . ", fn($" . $val . ") => empty($" . $val . "['component'])) as $" . $val . "){ ?> " . $html . " <?php } ?>";
         } elseif ($tagname == "find2d") {
             /*
                 <?= $array[array_search($find, array_column($array,$col))][$getvalue] ?>
             */
-            return  "<?= $" . $attribute['array'] . "[array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . ",'" . $attribute["col"] . "'))][" . $attribute['getvalue'] . "] ?>";
+            return "<?= $" . $attribute['array'] . "[array_search($" . $attribute["find"] . ", array_column($" . $attribute["array"] . ",'" . $attribute["col"] . "'))][" . $attribute['getvalue'] . "] ?>";
         } elseif ($tagname == "find") {
-            return  str_replace([], [], $html);
+            return str_replace([], [], $html);
         } elseif ($tagname == "if") {
-            return "<?php if(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"])  . "){ ?>" .
+            return "<?php if(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"]) . "){ ?>" .
                 $html .
                 "<?php } ?>";
         } elseif ($tagname == "elseif") {
-            return "<?php elseif(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"])  . "){ ?>" .
-                $html ."<?php } ?>";
+            return "<?php elseif(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"]) . "){ ?>" .
+                $html . "<?php } ?>";
         } elseif ($tagname == "else") {
             return "<?php else { ?>
             $html
             <?php } ?>";
         }
-
     }
 
     private function formatBoundAttributeValue(array $attribute): string
