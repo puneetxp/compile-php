@@ -53,8 +53,8 @@ class phpCompile
             $this->tostring($template->html->tags)
         );
 
-        return "<?php namespace $namespace; $imports class $className { public function __construct(" .
-            $constructorSignature . ")  {?> " .
+        return "<?php namespace $namespace; $imports class $className extends \The\PageBase { public function __construct(" .
+            $constructorSignature . ")  { parent::__construct(); \$page = array_merge(\$page, \$this->page); ?> " .
             $body .
             "<?php }}";
     }
