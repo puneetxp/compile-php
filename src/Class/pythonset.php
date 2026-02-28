@@ -14,6 +14,7 @@ class pythonset {
 
         foreach ($this->table as $table) {
             $this->writeModel($table);
+            $this->writeOrmModel($table);  // Generate ORM models automatically
             $this->writeService($table);
             $this->generateRouters($table);
         }
@@ -28,6 +29,7 @@ class pythonset {
             $_ENV['dir'] . '/python/app/api',
             $_ENV['dir'] . '/python/app/api/roles',
             $_ENV['dir'] . '/python/app/models',
+            $_ENV['dir'] . '/python/app/orm',  // Add ORM directory
             $_ENV['dir'] . '/python/app/services',
         ];
 
@@ -41,10 +43,8 @@ class pythonset {
             mkdir($dir, 0755, true);
         }
 
-        $init = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '__init__.py';
-        if (!is_file($init)) {
-            file_put_contents($init, "");
-        }
+        // NO __init__.py files - Python 3.3+ uses implicit namespace packages (PEP 420)
+        // This follows the NO_INIT_FILES_POLICY for cleaner, more maintainable code
     }
 
     private function writeModel(array $table): void {
@@ -98,24 +98,134 @@ class pythonset {
         index::createfile($filePath, $content);
     }
 
+    private function writeOrmModel(array $table): void {
+        $className = $this->studly($table['name']);
+        $filePath = $_ENV['dir'] . '/python/app/orm/' . $this->snake($table['name']) . '.py';
+        $tableName = $table['table'];
+        
+        // Build fillable fields list from table data
+        $fillableFields = [];
+        foreach ($table['data'] as $column) {
+            $fillableFields[] = "        '" . $this->snake($column['name']) . "',";
+        }
+        
+        // Build relations dictionary
+        $relationLines = [];
+        if (isset($table['relations']) && is_array($table['relations']) && !empty($table['relations'])) {
+            foreach ($table['relations'] as $relName => $relConfig) {
+                // Get the related table name - handle both 'table' and 'model' keys
+                $relatedTable = $relConfig['table'] ?? $relConfig['model'] ?? $relName;
+                $relatedClass = $this->studly($relatedTable);
+                $relatedModule = $this->snake($relatedTable);
+                
+                // Use string-based lazy loading to avoid circular imports
+                $relationLines[] = "            '$relName': {";
+                $relationLines[] = "                'name': '" . $this->snake($relConfig['name']) . "',";
+                $relationLines[] = "                'key': '" . $this->snake($relConfig['key']) . "',";
+                $relationLines[] = "                'callback': lambda: __import__('app.orm.$relatedModule', fromlist=['$relatedClass']).$relatedClass";
+                $relationLines[] = "            },";
+            }
+        }
+        
+        $content = [];
+        $content[] = '"""';
+        $content[] = $className . ' ORM Model';
+        $content[] = 'Auto-generated from JSON schema';
+        $content[] = '"""';
+        $content[] = '';
+        $content[] = 'from app.core.model import Model';
+        $content[] = '';
+        $content[] = '';
+        $content[] = 'class ' . $className . '(Model):';
+        $content[] = '    """' . $className . ' model for ' . $tableName . ' table"""';
+        $content[] = '    ';
+        $content[] = "    table = '$tableName'";
+        $content[] = '    ';
+        $content[] = '    fillable = [';
+        $content = [...$content, ...$fillableFields];
+        $content[] = '    ]';
+        
+        if (!empty($relationLines)) {
+            $content[] = '    ';
+            $content[] = '    relations = {';
+            $content = [...$content, ...$relationLines];
+            $content[] = '    }';
+        }
+        
+        $content[] = '';
+        
+        index::createfile($filePath, implode("\n", $content));
+    }
+
     private function writeService(array $table): void {
         $className = $this->studly($table['name']) . 'Service';
         $filePath = $_ENV['dir'] . '/python/app/services/' . $this->snake($table['name']) . '_service.py';
         $tableName = $table['table'];
+        $modelSnake = $this->snake($table['name']);
+        $modelClass = $this->studly($table['name']);
+        $specificGetterName = 'get_' . $modelSnake . '_service';
 
         $content = implode("\n", [
             'from __future__ import annotations',
             '',
-            'from the_python import ModelService',
+            "from app.orm.$modelSnake import $modelClass",
             '',
             '',
-            "class $className(ModelService):",
+            "class $className:",
             '    def __init__(self) -> None:',
-            "        super().__init__(table=\"$tableName\")",
+            "        self.model = $modelClass",
+            "        self.table = \"$tableName\"",
             '',
+            '    def all(self):',
+            '        return self.model().get()',
+            '',
+            '    def find(self, item_id: int):',
+            "        return self.model().where('id', item_id).first()",
+            '',
+            '    def where(self, filters: dict):',
+            '        query = self.model()',
+            '        for key, value in filters.items():',
+            '            query = query.where(key, value)',
+            '        return query.get()',
+            '',
+            '    def create(self, data: dict):',
+            '        return self.model().create(data)',
+            '',
+            '    def update(self, item_id: int, data: dict):',
+            "        record = self.model().where('id', item_id).first()",
+            '        if not record:',
+            '            return None',
+            '        for key, value in data.items():',
+            '            setattr(record, key, value)',
+            '        record.save()',
+            '        return record',
+            '',
+            '    def upsert(self, data: dict):',
+            "        if 'id' in data and data['id']:",
+            "            return self.update(data['id'], data)",
+            '        return self.create(data)',
+            '',
+            '    def delete(self, item_id: int) -> bool:',
+            "        record = self.model().where('id', item_id).first()",
+            '        if not record:',
+            '            return False',
+            '        record.delete()',
+            '        return True',
+            '',
+            '',
+            '# Singleton instance',
             '_service = ' . $className . '()',
             '',
+            '',
+            '# Generic getter (for auto-generated routers)',
             'def get_service() -> ' . $className . ':',
+            '    """Get service instance (generic name for auto-generated code)"""',
+            '    return _service',
+            '',
+            '',
+            '# Specific getter (for manual/custom code compatibility)',
+            'def ' . $specificGetterName . '() -> ' . $className . ':',
+            '    """Get service instance (specific name for backward compatibility)"""',
             '    return _service',
             '',
         ]);
@@ -151,16 +261,19 @@ class pythonset {
         }
 
         $normalizedScope = $scope === 'public' ? 'ipublic' : $scope;
-        $tableSlug = $this->slug($table['name']);
         $tableSnake = $this->snake($table['name']);
-        $scopeSlug = $this->slug($normalizedScope);
-        $moduleSegments = $isCustomRole ? ['roles', $scopeSlug, $tableSlug] : [$scopeSlug, $tableSlug];
+        $scopeSnake = $this->snake($normalizedScope);
+        $moduleSegments = $isCustomRole ? ['roles', $scopeSnake, $tableSnake] : [$scopeSnake, $tableSnake];
         $modulePath = implode('.', $moduleSegments);
         $dirPath = $_ENV['dir'] . '/python/app/api/' . implode('/', $moduleSegments);
 
-        $this->ensurePackage($dirPath);
+        // Create directory structure without __init__.py files
+        if (!is_dir($dirPath)) {
+            mkdir($dirPath, 0755, true);
+        }
 
-        $filePath = $dirPath . '/__init__.py';
+        // Use proper module file naming (not __init__.py)
+        $filePath = $dirPath . '/' . $tableSnake . '.py';
         $modelClass = $this->studly($table['name']);
         $serviceImport = 'from app.services.' . $tableSnake . '_service import get_service';
         $modelImport = 'from app.models.' . $tableSnake . ' import ' . $modelClass;
@@ -185,18 +298,18 @@ class pythonset {
             $imports[] = 'from typing import ' . implode(', ', array_unique($typingImports));
         }
 
-        $functionSuffix = $scopeSlug . '_' . $tableSlug;
-        $prefix = '/' . $scopeSlug . '/' . $tableSlug;
+        $functionSuffix = $scopeSnake . '_' . $tableSnake;
+        $prefix = '/' . $scopeSnake . '/' . $tableSnake;
 
         $methods = $this->routerMethods($table, $operations, $functionSuffix, $modelClass);
 
-        $content = implode("\n", $imports) . "\n\n\nrouter = APIRouter(prefix=\"$prefix\", tags=[\"$scopeSlug-$tableSlug\"])\nservice = get_service()\n\n" . $methods;
+        $content = implode("\n", $imports) . "\n\n\nrouter = APIRouter(prefix=\"$prefix\", tags=[\"$scopeSnake-$tableSnake\"])\nservice = get_service()\n\n" . $methods;
 
         index::createfile($filePath, $content);
 
-        $alias = $scopeSlug . '_' . $tableSlug . '_router';
+        $alias = $scopeSnake . '_' . $tableSnake . '_router';
         $this->routers[] = [
-            'import' => 'from app.api.' . $modulePath . ' import router as ' . $alias,
+            'import' => 'from app.api.' . $modulePath . '.' . $tableSnake . ' import router as ' . $alias,
             'alias' => $alias,
         ];
     }
@@ -266,7 +379,8 @@ class pythonset {
     }
 
     private function writeRouterRegistry(): void {
-        $filePath = $_ENV['dir'] . '/python/app/api/__init__.py';
+        // Use routers.py instead of __init__.py (PEP 420 - no __init__.py needed)
+        $filePath = $_ENV['dir'] . '/python/app/api/routers.py';
         if (empty($this->routers)) {
             index::createfile($filePath, "\"\"\"Router registry for the generated FastAPI application.\"\"\"\n\nall_routers: list = []\n");
             return;
