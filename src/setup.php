@@ -4,6 +4,7 @@ namespace Puneetxp\CompilePhp;
 
 use Puneetxp\CompilePhp\Class\{
     mysql,
+    postgresql,
     index,
     denoset,
     phpset,
@@ -167,27 +168,43 @@ class setup {
         foreach ($this->route_use_array as $key => $value) {
             $this->route_use_multiple .= "use $key{" . implode(',', array_unique($value)) . "}; ";
         }
-        mysql::alltable($this->table, ["roles" => 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
-        $migration_sql = '';
-        $migration_relation = '';
-        $migration_insert = '';
-        foreach ($this->table as $item) {
-            $migration_sql .= file_get_contents($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($item['name']) . '.sql', 'TRUE');
-            $migration_relation .= file_get_contents($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($item['name']) . '_relation.sql', 'TRUE');
-            if (is_file($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql')) {
-                $migration_insert .= file_get_contents($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql', 'TRUE');
+        
+        // Check if PostgreSQL or MySQL
+        if (isset($this->json_set['postgresql']) && $this->json_set['postgresql'] === true) {
+            // Use PostgreSQL
+            $rolesInsert = "INSERT INTO roles (name) VALUES ('" . implode("'),('", array_values(array_unique($this->roles))) . "');";
+            postgresql::alltable($this->table, ["roles" => $rolesInsert]);
+        } else {
+            // Use MySQL (default)
+            mysql::alltable($this->table, ["roles" => 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
+            
+            // MySQL file consolidation
+            $migration_sql = '';
+            $migration_relation = '';
+            $migration_insert = '';
+            foreach ($this->table as $item) {
+                $migration_sql .= file_get_contents($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('structure/') . ucfirst($item['name']) . '.sql', 'TRUE');
+                $migration_relation .= file_get_contents($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('relations/') . ucfirst($item['name']) . '_relation.sql', 'TRUE');
+                if (is_file($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql')) {
+                    $migration_insert .= file_get_contents($_ENV["dir"] . "/database/" . ucfirst('mysql/') . ucfirst('insert/') . ucfirst($item['name']) . '_insert.sql', 'TRUE');
+                }
             }
+            file_put_contents($_ENV["dir"] . '/database/structure.sql', ($migration_sql));
+            file_put_contents($_ENV["dir"] . '/database/relation.sql', ($migration_relation));
+            file_put_contents($_ENV["dir"] . '/database/insert.sql', ($migration_insert));
+            file_put_contents($_ENV["dir"] . '/database/Migration.sql', ($migration_sql . ' ' . $migration_relation . ' ' . $migration_insert));
         }
-        file_put_contents($_ENV["dir"] . '/database/structure.sql', ($migration_sql));
-        file_put_contents($_ENV["dir"] . '/database/relation.sql', ($migration_relation));
-        file_put_contents($_ENV["dir"] . '/database/insert.sql', ($migration_insert));
-        file_put_contents($_ENV["dir"] . '/database/Migration.sql', ($migration_sql . ' ' . $migration_relation . ' ' . $migration_insert));
+        
         file_put_contents($_ENV["dir"] . '/config.json', json_encode($this->json_set, JSON_PRETTY_PRINT));
         return $this;
     }
 
     public function migrate() {
-        (new mysql())->migrate();
+        if (isset($this->json_set['postgresql']) && $this->json_set['postgresql'] === true) {
+            (new postgresql())->migrate();
+        } else {
+            (new mysql())->migrate();
+        }
         return $this;
     }
 
