@@ -7,10 +7,18 @@ class index {
     static function interface_set($table) {
         $x = [];
         foreach ($table['data'] as $item) {
+            // Map database types to TypeScript types
+            $tsType = match($item['datatype']) {
+                'json' => 'any',
+                'array' => 'string[]',
+                'vector' => 'number[]',
+                default => $item['datatype']
+            };
+            
             if (isset($item['sql_attribute']) && (str_contains($item['sql_attribute'], 'NOT NULL') || str_contains($item['sql_attribute'], 'PRIMARY') || str_contains($item['sql_attribute'], 'UNIQUE'))) {
-                $x[] = $item['name'] . ': ' . $item['datatype'];
+                $x[] = $item['name'] . ': ' . $tsType;
             } else {
-                $x[] = $item['name'] . ': ' . $item['datatype'] . ' | null';
+                $x[] = $item['name'] . ': ' . $tsType . ' | null';
             }
         }
         return "export interface " . ucfirst($table['name']) . " {
