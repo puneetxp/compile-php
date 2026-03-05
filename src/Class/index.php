@@ -144,8 +144,11 @@ class index {
     }
 
     public function relation() {
-        if (isset($this->rawtable['relation'])) {
-            foreach ($this->rawtable['relation'] as $relation) {
+        // Support both 'relation' and 'relations' keys for backward compatibility
+        $relationKey = isset($this->rawtable['relations']) ? 'relations' : 'relation';
+        
+        if (isset($this->rawtable[$relationKey])) {
+            foreach ($this->rawtable[$relationKey] as $relation) {
                 $r = [];
                 is_array($relation) ? $r['name'] = $relation['name'] : $r['name'] = $relation;
                 $r = array_search($r['name'], array_column($this->all, 'name'));
