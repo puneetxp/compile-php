@@ -65,6 +65,9 @@ class postgresql {
         $attr = str_replace('UNSIGNED', '', $attr);
         $attr = str_replace('AUTO_INCREMENT', '', $attr);
         
+        // Remove MySQL COMMENT syntax (COMMENT 'text' or COMMENT "text")
+        $attr = preg_replace("/COMMENT\s+['\"][^'\"]*['\"]/i", '', $attr);
+        
         // Handle PRIMARY KEY for id field
         if ($isId && strpos($attr, 'PRIMARY KEY') !== false) {
             return 'PRIMARY KEY';
@@ -93,8 +96,15 @@ class postgresql {
 
     public static function table($table) {
         $columns = [];
+        $seenColumns = []; // Track column names to avoid duplicates
         
         foreach ($table['data'] as $item) {
+            // Skip duplicate column names
+            if (in_array($item['name'], $seenColumns)) {
+                continue;
+            }
+            $seenColumns[] = $item['name'];
+            
             $isId = ($item['name'] === 'id');
             $dataType = self::convertDataType($item['mysql_data']);
             $attributes = self::convertAttributes($item['sql_attribute'], $isId);

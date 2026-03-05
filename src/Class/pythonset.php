@@ -106,18 +106,14 @@ class pythonset {
         // Build fillable fields list from table data
         $fillableFields = [];
         
-        // Add standard auto-generated fields first (if not already in data array)
-        $standardFields = ['id', 'created_at', 'updated_at', 'enable'];
-        $dataFieldNames = array_map(fn($col) => $col['name'], $table['data']);
-        
-        foreach ($standardFields as $stdField) {
-            if (!in_array($stdField, $dataFieldNames)) {
-                $fillableFields[] = "        '" . $this->snake($stdField) . "',";
-            }
-        }
-        
-        // Add fields from data array
+        // Only add fields that are explicitly fillable (exclude auto-generated fields)
+        // Auto-generated fields: id, created_at, updated_at (marked with fillable=false)
         foreach ($table['data'] as $column) {
+            // Skip fields marked as non-fillable (auto-generated fields)
+            if (isset($column['fillable']) && $column['fillable'] === "false") {
+                continue;
+            }
+            
             $fillableFields[] = "        '" . $this->snake($column['name']) . "',";
         }
         
