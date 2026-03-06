@@ -219,11 +219,11 @@ class phpCompile
                 $html .
                 "<?php } ?>";
         } elseif ($tagname == "title") {
-            return '<?= self::$title ?>';
+            return '<title><?= self::$title ?></title>';
         } elseif ($tagname == "metadescription") {
-            return '<?= self::$meta_description ?>';
+            return '<meta name="description" content="<?= self::$meta_description ?>" />';
         } elseif ($tagname == "canonical") {
-            return '<?= self::$canonical_url ?>';
+            return '<link rel="canonical" href="<?= self::$canonical_url ?>" />';
         } elseif ($tagname == "elseif") {
             return "<?php elseif(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"]) . "){ ?>" .
                 $html . "<?php } ?>";
