@@ -218,6 +218,12 @@ class phpCompile
             return "<?php if(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"]) . "){ ?>" .
                 $html .
                 "<?php } ?>";
+        } elseif ($tagname == "title") {
+            return '<?= self::$title ?>';
+        } elseif ($tagname == "metadescription") {
+            return '<?= self::$meta_description ?>';
+        } elseif ($tagname == "canonical") {
+            return '<?= self::$canonical_url ?>';
         } elseif ($tagname == "elseif") {
             return "<?php elseif(" . (str_starts_with($attribute["condition"], "$") ? $attribute["condition"] : "$" . $attribute["condition"]) . "){ ?>" .
                 $html . "<?php } ?>";
