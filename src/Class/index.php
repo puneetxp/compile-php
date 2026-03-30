@@ -14,7 +14,7 @@ class index {
                 'vector' => 'number[]',
                 default => $item['datatype']
             };
-            
+
             if (isset($item['sql_attribute']) && (str_contains($item['sql_attribute'], 'NOT NULL') || str_contains($item['sql_attribute'], 'PRIMARY') || str_contains($item['sql_attribute'], 'UNIQUE'))) {
                 $x[] = $item['name'] . ': ' . $tsType;
             } else {
@@ -97,6 +97,9 @@ class index {
         if (isset($rawtable['crud'])) {
             $this->table["crud"] = $this->rawtable['crud'];
         }
+        if (isset($rawtable['unique'])) {
+            $this->table["unique"] = $this->rawtable['unique'];
+        }
         $this->table["data"] = [];
     }
 
@@ -126,6 +129,9 @@ class index {
                         $this->table["data"][] = ['name' => 'title', 'mysql_data' => 'VARCHAR(255)', 'datatype' => 'string', 'default' => 'NULL'];
                         $this->table["data"][] = ['name' => 'seo_description', 'mysql_data' => 'longtext', 'datatype' => 'string', 'default' => 'NULL'];
                         break;
+                    case "delete":
+                        $this->table["data"][] = ['name' => 'deleted_at', 'mysql_data' => 'TIMESTAMP', 'datatype' => 'Date', 'default' => 'NULL'];
+                        break;
                 }
             }
         }
@@ -146,7 +152,7 @@ class index {
     public function relation() {
         // Support both 'relation' and 'relations' keys for backward compatibility
         $relationKey = isset($this->rawtable['relations']) ? 'relations' : 'relation';
-        
+
         if (isset($this->rawtable[$relationKey])) {
             foreach ($this->rawtable[$relationKey] as $relation) {
                 $r = [];
