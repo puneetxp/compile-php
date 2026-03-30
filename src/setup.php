@@ -212,4 +212,13 @@ class setup {
         mysql::migrateAlter();
         return $this;
     }
+
+    public function sync() {
+        if (isset($this->json_set['postgresql']) && $this->json_set['postgresql'] === true) {
+            (new postgresql())->sync($this->table);
+        } else {
+            (new mysql())->sync($this->table);
+        }
+        return $this;
+    }
 }

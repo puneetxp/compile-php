@@ -6,6 +6,26 @@ use mysqli;
 
 class mysql {
 
+    private static function uniqueClauses($table, string $prefix = ''): array {
+        if (!isset($table['unique']) || !is_array($table['unique'])) {
+            return [];
+        }
+
+        $clauses = [];
+        foreach ($table['unique'] as $index => $columns) {
+            $columnList = is_array($columns) ? $columns : [$columns];
+            if (count($columnList) === 0) {
+                continue;
+            }
+            $columnNames = array_map(fn($col) => trim((string) $col), $columnList);
+            $indexName = $table['name'] . '_' . implode('_', $columnNames) . '_unique';
+            $clauses[] = $prefix . 'UNIQUE KEY `' . $indexName . '` (' .
+                implode(',', array_map(fn($col) => '`' . $col . '`', $columnNames)) . ')';
+        }
+
+        return $clauses;
+    }
+
     public static function addattribute($tables) {
         return array_map(fn($item) => array_replace(
                         $item,
@@ -21,25 +41,31 @@ class mysql {
     }
 
     public static function tablealter($table) {
+        $columnChanges = array_map(
+                        fn($item) =>
+                        "ADD COLUMN IF NOT EXISTS `" . $item['name'] . "`" . ' ' .
+                        $item['mysql_data'] . ' ' .
+                        $item['sql_attribute'] . " ",
+                        $table['data']
+                );
+        $uniqueChanges = self::uniqueClauses($table, 'ADD ');
+
         return 'ALTER TABLE ' . $table['table'] . ' ' .
-                implode(",", array_map(
-                                fn($item) =>
-                                "ADD COLUMN IF NOT EXISTS `" . $item['name'] . "`" . ' ' .
-                                $item['mysql_data'] . ' ' .
-                                $item['sql_attribute'] . " ",
-                                $table['data']
-                        )) . ';';
+                implode(",", array_merge($columnChanges, $uniqueChanges)) . ';';
     }
 
     public static function table($table) {
-        return 'CREATE TABLE ' . $table['table'] . '(' .
-                implode(",", array_map(
-                                fn($item) =>
-                                "`" . $item['name'] . "`" . ' ' .
-                                $item['mysql_data'] . ' ' .
-                                $item['sql_attribute'],
-                                $table['data']
-                        )) . ')ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;';
+        $columns = array_map(
+                        fn($item) =>
+                        "`" . $item['name'] . "`" . ' ' .
+                        $item['mysql_data'] . ' ' .
+                        $item['sql_attribute'],
+                        $table['data']
+                );
+        $uniqueConstraints = self::uniqueClauses($table);
+
+        return 'CREATE TABLE IF NOT EXISTS ' . $table['table'] . '(' .
+                implode(",", array_merge($columns, $uniqueConstraints)) . ')ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;';
     }
 
     public static function migrate_table($table) {
@@ -113,16 +139,79 @@ class mysql {
 
     public function migrate() {
         echo "migrate sql\n";
+        $isFresh = $this->json_set["fresh"] == true;
         foreach ($this->dir as $key => $dir) {
-            if ($this->json_set["fresh"] == true)
-                ;
             echo "Migrating " . $key . "\n";
             foreach (index::scanfullfolder($dir) as $file) {
                 echo $file . "\n";
                 $x = file_get_contents($file);
                 foreach (explode(";", $x) as $xx) {
                     if ($xx !== "") {
-                        $this->conn->query($xx);
+                        try {
+                            $this->conn->query($xx);
+                        } catch (\mysqli_sql_exception $e) {
+                            if (!$isFresh) {
+                                echo "  [SKIP] " . $e->getMessage() . "\n";
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        echo "     Done\n";
+    }
+
+    public function sync($tables) {
+        $dbname = $this->json_set['env']['dbname'];
+        echo "Checking for missing columns and relations...\n";
+        
+        foreach ($tables as $tableDef) {
+            $tableName = $tableDef['table'];
+            
+            // Sync columns
+            $stmt = $this->conn->query("SELECT column_name FROM information_schema.columns WHERE table_schema = '$dbname' AND table_name = '$tableName'");
+            $existingColumns = [];
+            while ($row = $stmt->fetch_row()) {
+                $existingColumns[] = $row[0];
+            }
+            
+            foreach ($tableDef['data'] as $colDef) {
+                $colName = $colDef['name'];
+                if (!in_array($colName, $existingColumns)) {
+                    echo "Column `$colName` missing in table `$tableName`. Adding...\n";
+                    $alterSql = "ALTER TABLE `$tableName` ADD COLUMN `$colName` " . $colDef['mysql_data'] . " " . $colDef['sql_attribute'];
+                    try {
+                        $this->conn->query($alterSql);
+                        echo "Successfully added column `$colName` to `$tableName`.\n";
+                    } catch (\mysqli_sql_exception $e) {
+                        echo "Failed to add column `$colName` to `$tableName`: " . $e->getMessage() . "\n";
+                    }
+                }
+            }
+            
+            // Sync relations
+            $fkStmt = $this->conn->query("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = '$dbname' AND TABLE_NAME = '$tableName' AND REFERENCED_TABLE_NAME IS NOT NULL");
+            $existingFks = [];
+            while ($row = $fkStmt->fetch_row()) {
+                $existingFks[] = $row[0];
+            }
+            
+            foreach ($tableDef['data'] as $colDef) {
+                if (isset($colDef['relations'])) {
+                    foreach ($colDef['relations'] as $relDef) {
+                        $constraintName = $tableDef['name'] . "_" . $colDef['name'] . "_foreign";
+                        if (!in_array($constraintName, $existingFks)) {
+                            echo "Relation `$constraintName` missing in table `$tableName`. Adding...\n";
+                            $alterFkSql = "ALTER TABLE `$tableName` ADD CONSTRAINT `$constraintName` FOREIGN KEY (`" . $colDef['name'] . "`) REFERENCES `" . $relDef['table'] . "` (`" . $relDef['key'] . "`)";
+                            try {
+                                $this->conn->query($alterFkSql);
+                                echo "Successfully added relation `$constraintName` to `$tableName`.\n";
+                            } catch (\mysqli_sql_exception $e) {
+                                echo "Failed to add relation `$constraintName` to `$tableName`: " . $e->getMessage() . "\n";
+                            }
+                        }
                     }
                 }
             }

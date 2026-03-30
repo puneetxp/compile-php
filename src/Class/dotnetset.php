@@ -14,7 +14,7 @@ class dotnetset {
 
     public function dotnetset() {
         index::templatecopy("dotnet", "dotnet");
-        
+
         foreach ($this->table as $item) {
             // Model
             $model_content = $this->dotnetModel($item);
@@ -40,17 +40,17 @@ class dotnetset {
     public function dotnetModel($table) {
         $name = ucfirst($table['name']);
         $properties = "";
-        
+
         foreach ($table['data'] as $col) {
             $type = $this->getCSharpType($col['datatype']);
             $propName = ucfirst($col['name']);
             // Check for nullable
-            $nullable = "?"; 
+            $nullable = "?";
             if (isset($col['sql_attribute']) && str_contains($col['sql_attribute'], 'NOT NULL')) {
                 $nullable = "";
             }
             if ($type == 'string') $nullable = "?"; // Strings are nullable by default in some contexts, but let's be explicit
-            
+
             $properties .= "    public $type$nullable $propName { get; set; }\n";
         }
 
@@ -81,7 +81,7 @@ namespace DotNetApp.Controllers
     {
         // CRUD operations stub
         // Actual implementation would need a DbContext
-        
+
         [HttpGet]
         public IEnumerable<$name> Get()
         {

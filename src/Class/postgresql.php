@@ -4,6 +4,26 @@ namespace Puneetxp\CompilePhp\Class;
 
 class postgresql {
 
+    private static function uniqueClauses($table, string $prefix = ''): array {
+        if (!isset($table['unique']) || !is_array($table['unique'])) {
+            return [];
+        }
+
+        $clauses = [];
+        foreach ($table['unique'] as $columns) {
+            $columnList = is_array($columns) ? $columns : [$columns];
+            if (count($columnList) === 0) {
+                continue;
+            }
+            $columnNames = array_map(fn($col) => trim((string) $col), $columnList);
+            $indexName = $table['name'] . '_' . implode('_', $columnNames) . '_unique';
+            $clauses[] = $prefix . 'CONSTRAINT ' . $indexName . ' UNIQUE (' .
+                implode(',', array_map(fn($col) => '"' . $col . '"', $columnNames)) . ')';
+        }
+
+        return $clauses;
+    }
+
     public static function addattribute($tables) {
         return array_map(fn($item) => array_replace(
                         $item,
@@ -90,8 +110,9 @@ class postgresql {
             self::convertAttributes($item['sql_attribute']),
             $table['data']
         );
+        $uniqueConstraints = self::uniqueClauses($table, 'ADD ');
         
-        return 'ALTER TABLE ' . $table['table'] . ' ' . implode(", ", $columns) . ';';
+        return 'ALTER TABLE ' . $table['table'] . ' ' . implode(", ", array_merge($columns, $uniqueConstraints)) . ';';
     }
 
     public static function table($table) {
@@ -116,8 +137,9 @@ class postgresql {
                 $columns[] = "\"" . $item['name'] . "\" " . $dataType . ' ' . $attributes;
             }
         }
+        $uniqueConstraints = self::uniqueClauses($table);
         
-        return 'CREATE TABLE IF NOT EXISTS ' . $table['table'] . ' (' . implode(", ", $columns) . ');';
+        return 'CREATE TABLE IF NOT EXISTS ' . $table['table'] . ' (' . implode(", ", array_merge($columns, $uniqueConstraints)) . ');';
     }
 
     public static function migrate_table($table) {
@@ -198,13 +220,77 @@ class postgresql {
 
     public function __construct() {
         $this->json_set = json_decode(file_get_contents($_ENV["dir"] . '/config.json'), TRUE);
-        // PostgreSQL connection would go here if needed
-        // For now, we just generate SQL files
+        if (isset($this->json_set['postgresql']) && $this->json_set['postgresql'] === true) {
+            $env = $this->json_set['env'];
+            try {
+                $this->conn = new \PDO("pgsql:host=" . $env['dbhost'] . ";dbname=" . $env['dbname'], $env['dbuser'], $env['dbpwd']);
+                $this->conn->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            } catch (\PDOException $e) {
+                echo "PostgreSQL Connection failed: " . $e->getMessage() . "\n";
+            }
+        }
     }
 
     public function migrate() {
         echo "PostgreSQL migration via SQL files\n";
         echo "Run: psql -U " . $this->json_set["env"]["dbuser"] . " -d " . $this->json_set["env"]["dbname"] . " -f database/Migration.sql\n";
+        echo "     Done\n";
+    }
+
+    public function sync($tables) {
+        if (!$this->conn) {
+            echo "Skipping PostgreSQL sync: No connection.\n";
+            return;
+        }
+
+        echo "Checking for missing columns and relations (PostgreSQL)...\n";
+        foreach ($tables as $tableDef) {
+            $tableName = $tableDef['table'];
+            
+            // Sync columns
+            $stmt = $this->conn->prepare("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ?");
+            $stmt->execute([$tableName]);
+            $existingColumns = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            foreach ($tableDef['data'] as $colDef) {
+                $colName = $colDef['name'];
+                if (!in_array($colName, $existingColumns)) {
+                    echo "Column `$colName` missing in table `$tableName`. Adding...\n";
+                    $dataType = self::convertDataType($colDef['mysql_data']);
+                    $attr = self::convertAttributes($colDef['sql_attribute'], $colName === 'id');
+                    $alterSql = "ALTER TABLE \"$tableName\" ADD COLUMN \"$colName\" $dataType $attr";
+                    try {
+                        $this->conn->exec($alterSql);
+                        echo "Successfully added column `$colName` to `$tableName`.\n";
+                    } catch (\PDOException $e) {
+                        echo "Failed to add column `$colName` to `$tableName`: " . $e->getMessage() . "\n";
+                    }
+                }
+            }
+
+            // Sync relations
+            $fkStmt = $this->conn->prepare("SELECT constraint_name FROM information_schema.table_constraints WHERE table_schema = 'public' AND table_name = ? AND constraint_type = 'FOREIGN KEY'");
+            $fkStmt->execute([$tableName]);
+            $existingFks = $fkStmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            foreach ($tableDef['data'] as $colDef) {
+                if (isset($colDef['relations'])) {
+                    foreach ($colDef['relations'] as $relDef) {
+                        $constraintName = $tableDef['name'] . "_" . $colDef['name'] . "_foreign";
+                        if (!in_array($constraintName, $existingFks)) {
+                            echo "Relation `$constraintName` missing in table `$tableName`. Adding...\n";
+                            $alterFkSql = "ALTER TABLE \"$tableName\" ADD CONSTRAINT \"$constraintName\" FOREIGN KEY (\"" . $colDef['name'] . "\") REFERENCES \"" . $relDef['table'] . "\" (\"" . $relDef['key'] . "\")";
+                            try {
+                                $this->conn->exec($alterFkSql);
+                                echo "Successfully added relation `$constraintName` to `$tableName`.\n";
+                            } catch (\PDOException $e) {
+                                echo "Failed to add relation `$constraintName` to `$tableName`: " . $e->getMessage() . "\n";
+                            }
+                        }
+                    }
+                }
+            }
+        }
         echo "     Done\n";
     }
 }

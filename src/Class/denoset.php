@@ -85,6 +85,10 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
    }' : '') .
                     (in_array("d", $curd) ? '
    static async delete(session: Session, param:' . $this->param . ') {
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$().where({ id: [param.pathname.groups.id] }).update({ deleted_at: new Date() });
+      return response.JSON(' . $table['name'] . ', session);
+   }
+   static async perma_delete(session: Session, param:' . $this->param . ') {
       const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$().delete({ id: [param.pathname.groups.id] });
       return response.JSON(' . $table['name'] . ', session);
    }' : '') . '
