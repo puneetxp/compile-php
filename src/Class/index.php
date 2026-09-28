@@ -154,10 +154,20 @@ class index {
         $relationKey = isset($this->rawtable['relations']) ? 'relations' : 'relation';
 
         if (isset($this->rawtable[$relationKey])) {
-            foreach ($this->rawtable[$relationKey] as $relation) {
-                $r = [];
-                is_array($relation) ? $r['name'] = $relation['name'] : $r['name'] = $relation;
-                $r = array_search($r['name'], array_column($this->all, 'name'));
+            foreach ($this->rawtable[$relationKey] as $relName => $relation) {
+                // Object form: "buyer": {"name": "buyer_id", "table": "users", "key": "id"} — here
+                // "name" is the FK column, not a model name, so it must not go through the lookup below.
+                if (is_array($relation) && isset($relation['table'])) {
+                    $this->explicitRelation(is_string($relName) ? $relName : null, $relation);
+                    continue;
+                }
+                $modelName = is_array($relation) ? $relation['name'] : $relation;
+                $r = array_search($modelName, array_column($this->all, 'name'));
+                if ($r === false) {
+                    // Without this guard $this->all[false] silently resolves to the first model.
+                    echo "Warning: {$this->rawtable['name']} relates to unknown model '$modelName', skipping\n";
+                    continue;
+                }
                 $rx = ['table' => $this->all[$r]['table'], 'callback' => $this->all[$r]['name'], 'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id', 'key' => 'id'];
                 $this->table["data"][] = [
                     'name' => isset($relation['alias']) ? $relation['alias'] : $this->all[$r]['name'] . '_id',
@@ -171,6 +181,29 @@ class index {
             }
         }
         return $this;
+    }
+
+    private function explicitRelation(?string $alias, array $relation): void {
+        $target = array_search($relation['table'], array_column($this->all, 'table'));
+        if ($target === false) {
+            echo "Warning: {$this->rawtable['name']} relates to unknown table '{$relation['table']}', skipping\n";
+            return;
+        }
+        $column = $relation['name'];
+        $alias = $alias ?? $this->all[$target]['name'];
+        $rx = ['table' => $relation['table'], 'callback' => $this->all[$target]['name'], 'name' => $column, 'key' => $relation['key'] ?? 'id'];
+
+        // The FK column is normally declared in "data" already; attach the relation to it
+        // instead of appending a second column with the same name.
+        foreach ($this->table['data'] as $i => $col) {
+            if ($col['name'] === $column) {
+                $this->table['data'][$i]['relations'][$alias] = $rx;
+                $this->table['relations'][$alias] = $rx;
+                return;
+            }
+        }
+        $this->table['data'][] = ['name' => $column, 'mysql_data' => 'bigint UNSIGNED', 'datatype' => 'number', 'relations' => [$alias => $rx]];
+        $this->table['relations'][$alias] = $rx;
     }
 
     public static function templatecopy(string $folder, string $destination) {
