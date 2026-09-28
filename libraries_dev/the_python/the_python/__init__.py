@@ -1,6 +1,7 @@
 """Utility helpers for the generated FastAPI application."""
 
-from .model import ModelService
+from .model import Model, ModelService
+from .db import Base, SessionLocal, engine
 from .response import (
     success_response,
     error_response,
@@ -13,12 +14,22 @@ from .mail import Mailer
 from .sqlbuilder import SqlBuilder
 
 __all__ = [
+    # SQL-backed framework Model base class
+    "Model",
+    # SQLAlchemy ORM helpers
+    "Base",
+    "engine",
+    "SessionLocal",
+    # In-memory prototype layer
     "ModelService",
+    # Response helpers
     "success_response",
     "error_response",
     "not_found_response",
+    # Auth / session
     "AuthService",
     "session_store",
+    # File / mail / query utilities
     "FileAct",
     "Mailer",
     "SqlBuilder",
