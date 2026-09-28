@@ -52,17 +52,22 @@ class pythonset {
         $filePath = $_ENV['dir'] . '/python/app/models/' . $this->snake($table['name']) . '.py';
 
         $fields = [];
+        $inputFields = [];
         $needsOptional = false;
         $needsAny = false;
         $needsDict = false;
         $needsDatetime = false;
+        $needsDate = false;
+        $needsDecimal = false;
 
         foreach ($table['data'] as $column) {
-            $typeInfo = $this->pythonType($column['datatype'] ?? 'string');
+            $typeInfo = $this->pythonType($column['datatype'] ?? 'string', $column['mysql_data'] ?? '');
             $typeHint = $typeInfo['type'];
             $needsAny = $needsAny || $typeInfo['needsAny'];
             $needsDict = $needsDict || $typeInfo['needsDict'];
             $needsDatetime = $needsDatetime || $typeInfo['needsDatetime'];
+            $needsDate = $needsDate || ($typeInfo['needsDate'] ?? false);
+            $needsDecimal = $needsDecimal || ($typeInfo['needsDecimal'] ?? false);
 
             $isOptional = !$this->isColumnRequired($column);
             $needsOptional = $needsOptional || $isOptional;
@@ -73,6 +78,12 @@ class pythonset {
 
             $default = $isOptional ? ' = None' : '';
             $fields[] = '    ' . $this->snake($column['name']) . ': ' . $typeHint . $default;
+            if (!in_array($column['name'], ['id', 'created_at', 'updated_at'], true)) {
+                // Aliased types: a column named `date` would otherwise shadow the type once it defaults to None.
+                $inputType = strtr($typeInfo['type'], ['datetime' => '_datetime', 'date' => '_date']);
+                $inputType = str_replace('_date_datetime', '_datetime', $inputType);
+                $inputFields[] = '    ' . $this->snake($column['name']) . ': ' . $inputType . ' | None = None';
+            }
         }
 
         $imports = ['from __future__ import annotations', 'from pydantic import BaseModel'];
@@ -89,11 +100,20 @@ class pythonset {
         if (!empty($typing)) {
             $imports[] = 'from typing import ' . implode(', ', array_unique($typing));
         }
-        if ($needsDatetime) {
-            $imports[] = 'from datetime import datetime';
+        $datetimeNames = array_merge($needsDate ? ['date'] : [], $needsDatetime ? ['datetime'] : []);
+        if (!empty($datetimeNames)) {
+            $imports[] = 'from datetime import ' . implode(', ', $datetimeNames);
+        }
+        if ($needsDecimal) {
+            $imports[] = 'from decimal import Decimal';
+        }
+        if (!empty($datetimeNames)) {
+            $imports[] = 'from datetime import ' . implode(', ', array_map(fn($n) => "$n as _$n", $datetimeNames));
         }
 
-        $content = implode("\n", $imports) . "\n\n\nclass $className(BaseModel):\n" . ($fields ? implode("\n", $fields) : '    pass') . "\n";
+        // ${className}Input is the request body for create/update: every column optional, server-managed ones left out.
+        $content = implode("\n", $imports) . "\n\n\nclass $className(BaseModel):\n" . ($fields ? implode("\n", $fields) : '    pass') . "\n"
+            . "\n\nclass {$className}Input(BaseModel):\n" . ($inputFields ? implode("\n", $inputFields) : '    pass') . "\n";
 
         index::createfile($filePath, $content);
     }
@@ -121,10 +141,14 @@ class pythonset {
         $relationLines = [];
         if (isset($table['relations']) && is_array($table['relations']) && !empty($table['relations'])) {
             foreach ($table['relations'] as $relName => $relConfig) {
-                // Get the related table name - handle both 'table' and 'model' keys
-                $relatedTable = $relConfig['table'] ?? $relConfig['model'] ?? $relName;
-                $relatedClass = $this->studly($relatedTable);
-                $relatedModule = $this->snake($relatedTable);
+                // ORM files are named after the singular model (orm/active_role.py -> ActiveRole),
+                // not the plural table, so resolve the model name before building the import.
+                $relatedModel = $relConfig['callback']
+                    ?? $relConfig['model']
+                    ?? $this->modelForTable($relConfig['table'] ?? '')
+                    ?? $relName;
+                $relatedClass = $this->studly($relatedModel);
+                $relatedModule = $this->snake($relatedModel);
                 
                 // Use string-based lazy loading to avoid circular imports
                 $relationLines[] = "            '$relName': {";
@@ -173,52 +197,16 @@ class pythonset {
         $modelClass = $this->studly($table['name']);
         $specificGetterName = 'get_' . $modelSnake . '_service';
 
+        // All CRUD (and islogin owner scoping) lives in app/core/crud_service.py; see app/core/ownership.py.
         $content = implode("\n", [
             'from __future__ import annotations',
             '',
+            'from app.core.crud_service import CrudService',
             "from app.orm.$modelSnake import $modelClass",
             '',
             '',
-            "class $className:",
-            '    def __init__(self) -> None:',
-            "        self.model = $modelClass",
-            "        self.table = \"$tableName\"",
-            '',
-            '    def all(self):',
-            '        return self.model().get()',
-            '',
-            '    def find(self, item_id: int):',
-            "        return self.model().where('id', item_id).first()",
-            '',
-            '    def where(self, filters: dict):',
-            '        query = self.model()',
-            '        for key, value in filters.items():',
-            '            query = query.where(key, value)',
-            '        return query.get()',
-            '',
-            '    def create(self, data: dict):',
-            '        return self.model().create(data)',
-            '',
-            '    def update(self, item_id: int, data: dict):',
-            "        record = self.model().where('id', item_id).first()",
-            '        if not record:',
-            '            return None',
-            '        for key, value in data.items():',
-            '            setattr(record, key, value)',
-            '        record.save()',
-            '        return record',
-            '',
-            '    def upsert(self, data: dict):',
-            "        if 'id' in data and data['id']:",
-            "            return self.update(data['id'], data)",
-            '        return self.create(data)',
-            '',
-            '    def delete(self, item_id: int) -> bool:',
-            "        record = self.model().where('id', item_id).first()",
-            '        if not record:',
-            '            return False',
-            '        record.delete()',
-            '        return True',
+            "class $className(CrudService):",
+            "    model = $modelClass",
             '',
             '',
             '# Singleton instance',
@@ -284,7 +272,7 @@ class pythonset {
         $filePath = $dirPath . '/' . $tableSnake . '.py';
         $modelClass = $this->studly($table['name']);
         $serviceImport = 'from app.services.' . $tableSnake . '_service import get_service';
-        $modelImport = 'from app.models.' . $tableSnake . ' import ' . $modelClass;
+        $modelImport = 'from app.models.' . $tableSnake . ' import ' . $modelClass . ', ' . $modelClass . 'Input';
 
         $typingImports = [];
         $needsList = in_array('a', $operations) || in_array('w', $operations);
@@ -301,7 +289,18 @@ class pythonset {
             $typingImports[] = 'Any';
         }
 
-        $imports = ['from __future__ import annotations', 'from fastapi import APIRouter, HTTPException', $modelImport, $serviceImport];
+        // islogin (and custom role) controllers act for the signed-in user: rows are owner-scoped.
+        $scoped = $normalizedScope === 'islogin' || $isCustomRole;
+        $imports = ['from __future__ import annotations', 'from fastapi import APIRouter, HTTPException' . ($scoped ? ', Depends' : ''), $modelImport, $serviceImport];
+        // isuper controllers are admin-only (also enforced where main.py mounts them).
+        $adminOnly = $normalizedScope === 'isuper';
+        if ($adminOnly) {
+            $imports[1] = 'from fastapi import APIRouter, HTTPException, Depends';
+            $imports[] = 'from app.core.auth import get_current_admin';
+        }
+        if ($scoped) {
+            $imports[] = 'from app.core.auth import get_current_active_user';
+        }
         if (!empty($typingImports)) {
             $imports[] = 'from typing import ' . implode(', ', array_unique($typingImports));
         }
@@ -309,9 +308,10 @@ class pythonset {
         $functionSuffix = $scopeSnake . '_' . $tableSnake;
         $prefix = '/' . $scopeSnake . '/' . $tableSnake;
 
-        $methods = $this->routerMethods($table, $operations, $functionSuffix, $modelClass);
+        $methods = $this->routerMethods($table, $operations, $functionSuffix, $modelClass, $scoped);
 
-        $content = implode("\n", $imports) . "\n\n\nrouter = APIRouter(prefix=\"$prefix\", tags=[\"$scopeSnake-$tableSnake\"])\nservice = get_service()\n\n" . $methods;
+        $guard = $adminOnly ? ",\n                   dependencies=[Depends(get_current_admin)]" : '';
+        $content = implode("\n", $imports) . "\n\n\nrouter = APIRouter(prefix=\"$prefix\", tags=[\"$scopeSnake-$tableSnake\"]$guard)\nservice = get_service()\n\n" . $methods;
 
         index::createfile($filePath, $content);
 
@@ -322,28 +322,32 @@ class pythonset {
         ];
     }
 
-    private function routerMethods(array $table, array $operations, string $suffix, string $modelClass): string {
+    private function routerMethods(array $table, array $operations, string $suffix, string $modelClass, bool $scoped = false): string {
         $lines = [];
         $target = $table['name'];
+        $user = $scoped ? 'current_user=Depends(get_current_active_user)' : '';
+        $userAfter = $scoped ? ', ' . $user : '';
+        $owner = $scoped ? 'owner=current_user' : '';
+        $ownerAfter = $scoped ? ', ' . $owner : '';
 
         if (in_array('a', $operations)) {
             $lines[] = '@router.get("/", response_model=List[' . $modelClass . '])';
-            $lines[] = 'def list_' . $suffix . '():';
-            $lines[] = '    return service.all()';
+            $lines[] = 'def list_' . $suffix . '(' . $user . '):';
+            $lines[] = '    return service.all(' . $owner . ')';
             $lines[] = '';
         }
 
         if (in_array('w', $operations)) {
             $lines[] = '@router.post("/where", response_model=List[' . $modelClass . '])';
-            $lines[] = 'def where_' . $suffix . '(filters: Dict[str, Any]):';
-            $lines[] = '    return service.where(filters)';
+            $lines[] = 'def where_' . $suffix . '(filters: Dict[str, Any]' . $userAfter . '):';
+            $lines[] = '    return service.where(filters' . $ownerAfter . ')';
             $lines[] = '';
         }
 
         if (in_array('r', $operations)) {
             $lines[] = '@router.get("/{item_id}", response_model=' . $modelClass . ')';
-            $lines[] = 'def show_' . $suffix . '(item_id: int):';
-            $lines[] = '    record = service.find(item_id)';
+            $lines[] = 'def show_' . $suffix . '(item_id: int' . $userAfter . '):';
+            $lines[] = '    record = service.find(item_id' . $ownerAfter . ')';
             $lines[] = '    if not record:';
             $lines[] = '        raise HTTPException(status_code=404, detail="' . ucfirst($target) . ' not found")';
             $lines[] = '    return record';
@@ -352,15 +356,15 @@ class pythonset {
 
         if (in_array('c', $operations)) {
             $lines[] = '@router.post("/", response_model=' . $modelClass . ', status_code=201)';
-            $lines[] = 'def create_' . $suffix . '(payload: ' . $modelClass . '):';
-            $lines[] = '    return service.create(payload.dict(exclude_unset=True))';
+            $lines[] = 'def create_' . $suffix . '(payload: ' . $modelClass . 'Input' . $userAfter . '):';
+            $lines[] = '    return service.create(payload.dict(exclude_unset=True)' . $ownerAfter . ')';
             $lines[] = '';
         }
 
         if (in_array('u', $operations)) {
             $lines[] = '@router.put("/{item_id}", response_model=' . $modelClass . ')';
-            $lines[] = 'def update_' . $suffix . '(item_id: int, payload: ' . $modelClass . '):';
-            $lines[] = '    updated = service.update(item_id, payload.dict(exclude_unset=True))';
+            $lines[] = 'def update_' . $suffix . '(item_id: int, payload: ' . $modelClass . 'Input' . $userAfter . '):';
+            $lines[] = '    updated = service.update(item_id, payload.dict(exclude_unset=True)' . $ownerAfter . ')';
             $lines[] = '    if not updated:';
             $lines[] = '        raise HTTPException(status_code=404, detail="' . ucfirst($target) . ' not found")';
             $lines[] = '    return updated';
@@ -369,15 +373,15 @@ class pythonset {
 
         if (in_array('p', $operations)) {
             $lines[] = '@router.post("/upsert", response_model=' . $modelClass . ')';
-            $lines[] = 'def upsert_' . $suffix . '(payload: ' . $modelClass . '):';
-            $lines[] = '    return service.upsert(payload.dict(exclude_unset=True))';
+            $lines[] = 'def upsert_' . $suffix . '(payload: ' . $modelClass . 'Input' . $userAfter . '):';
+            $lines[] = '    return service.upsert(payload.dict(exclude_unset=True)' . $ownerAfter . ')';
             $lines[] = '';
         }
 
         if (in_array('d', $operations)) {
             $lines[] = '@router.delete("/{item_id}", response_model=Dict[str, bool])';
-            $lines[] = 'def delete_' . $suffix . '(item_id: int):';
-            $lines[] = '    if not service.delete(item_id):';
+            $lines[] = 'def delete_' . $suffix . '(item_id: int' . $userAfter . '):';
+            $lines[] = '    if not service.delete(item_id' . $ownerAfter . '):';
             $lines[] = '        raise HTTPException(status_code=404, detail="' . ucfirst($target) . ' not found")';
             $lines[] = '    return {"success": True}';
             $lines[] = '';
@@ -411,8 +415,28 @@ class pythonset {
         index::createfile($filePath, implode("\n", $content));
     }
 
-    private function pythonType(string $datatype): array {
+    private function modelForTable(string $tableName): ?string {
+        foreach ($this->table as $t) {
+            if (($t['table'] ?? null) === $tableName) {
+                return $t['name'];
+            }
+        }
+        return null;
+    }
+
+    private function pythonType(string $datatype, string $sqlType = ''): array {
         $type = strtolower($datatype);
+        $sqlType = strtolower(trim($sqlType));
+
+        // "number" alone can't distinguish integers from DECIMAL/NUMERIC/FLOAT; the SQL type can.
+        if ($type === 'number' && preg_match('/^(decimal|numeric|float|double|real)/', $sqlType)) {
+            // float, not Decimal: pydantic serialises Decimal as a JSON string, which breaks number formatting in the UI.
+            return ['type' => 'float', 'needsAny' => false, 'needsDict' => false, 'needsDatetime' => false];
+        }
+        if ($type === 'date' && $sqlType === 'date') {
+            return ['type' => 'date', 'needsAny' => false, 'needsDict' => false, 'needsDatetime' => false, 'needsDate' => true];
+        }
+
         return match ($type) {
             'number' => ['type' => 'int', 'needsAny' => false, 'needsDict' => false, 'needsDatetime' => false],
             'boolean' => ['type' => 'bool', 'needsAny' => false, 'needsDict' => false, 'needsDatetime' => false],

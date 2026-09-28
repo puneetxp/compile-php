@@ -64,7 +64,6 @@ export class run {
 implode("
       ", $run).
 '
-      AccountService.checkinit()
       ])
     }
 }';
@@ -75,19 +74,34 @@ implode("
     public function Service_set()
     {
         $solidjs = '/solidjs/src/shared/';
-        $x = 'import { ModelService } from "./Service";';
+        $serviceDir = $_ENV["dir"] . $solidjs . 'Service/';
+        $servicesFile = $serviceDir . 'Services.ts';
+
+        // Projects name the base class file either ModelService.ts or Service.ts.
+        $baseModule = is_file($serviceDir . 'ModelService.ts') ? './ModelService' : './Service';
+        $x = 'import { ModelService } from "' . $baseModule . '";';
+
+        // Keep hand-added re-exports (e.g. export * from "./Weather") across regenerations.
+        $customExports = [];
+        if (is_file($servicesFile)) {
+            preg_match_all('/^export \* from [\'"][^\'"]+[\'"];?\s*$/m', file_get_contents($servicesFile), $matches);
+            $customExports = array_map('trim', $matches[0]);
+        }
+
         $import = [];
+        $service = [];
         foreach ($this->table as $item) {
             $Name = ucfirst($item['name']);
             $import[] = 'import { ' . $Name . ' } from "../Interface/Model/' . $Name . '";';
             $service[] = 'export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
     .seTable("' . $item['name'] . '")
-    .seturl("api/' . $item['name'] . '");';
+    .seturl("/islogin/' . $item['name'] . '/");';
         }
-        $solidservice = index::fopen_dir($_ENV["dir"] . $solidjs . 'Service/Services.ts');
-        $solidservice_write = $x . implode("
-", $import) . implode("
-", $service);
+        $solidservice_write = $x . "\n" . implode("\n", $import) . "\n\n" . implode("\n", $service) . "\n";
+        if (count($customExports) > 0) {
+            $solidservice_write .= "\n" . implode("\n", array_unique($customExports)) . "\n";
+        }
+        $solidservice = index::fopen_dir($servicesFile);
         fwrite($solidservice, $solidservice_write);
     }
     public static function SolidTsStore($table)
