@@ -9,7 +9,12 @@ class pythonset {
     public function __construct(private array $table, private array $json) {}
 
     public function pythonset(): void {
-        index::templatecopy("python", "python");
+        if (is_file($_ENV['dir'] . '/python/app/main.py')) {
+            // existing project: only supply missing core modules the generated code imports, never new app files
+            index::templatecopy("python/app/core", "python/app/core");
+        } else {
+            index::templatecopy("python", "python");
+        }
         $this->bootstrapPackages();
 
         foreach ($this->table as $table) {

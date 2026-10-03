@@ -85,7 +85,10 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
    }' : '') .
                     (in_array("d", $curd) ? '
    static async delete(session: Session, param:' . $this->param . ') {
-      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$().where({ id: [param.pathname.groups.id] }).update({ deleted_at: new Date() });
+      const ' . $table['name'] . ' = await ' . ucfirst($table['name']) . '$().' . (in_array('deleted_at', array_column($table['data'], 'name'))
+                        // soft delete only when the model has "additional": ["delete"]; otherwise the column does not exist
+                        ? 'where({ id: [param.pathname.groups.id] }).update({ deleted_at: new Date() })'
+                        : 'delete({ id: [param.pathname.groups.id] })') . ';
       return response.JSON(' . $table['name'] . ', session);
    }
    static async perma_delete(session: Session, param:' . $this->param . ') {
@@ -105,7 +108,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                 $nullable[] = $sql['name'];
             }
         }
-        $relations_key = array_keys($table['relations']);
+        $relations_key = array_keys($table['relations'] ?? []);
         $relations = '';
         if (count($relations_key) > 0) {
             $relations .= '{';
@@ -171,7 +174,7 @@ class Standard extends Model<" . ucfirst($table["name"]) . "> {
             " . json_encode($nullable) . ",
             " . $fillable . ",
             " . json_encode(array_column($table['data'], 'name')).",
-            " . ($relations == '' ? '[]' : $relations)."
+            " . ($relations == '' ? '{}' : $relations)."
         );
     }
 }

@@ -47,7 +47,7 @@ class phpset {
     }
 
     function phpmodel($table) {
-        $relations_key = array_keys($table['relations']);
+        $relations_key = array_keys($table['relations'] ?? []);
         $relations = '';
         if (count($relations_key) > 0) {
             $relations .= '[';
