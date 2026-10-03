@@ -2,29 +2,18 @@
 
 use The\Auth;
 
+// Routes for a signed-in user (mounted inside the islogin group).
 $iauth = [
-    [
-        "method" => "POST",
-        "path" => "/login",
-        "handler" => [Auth::class, "login"]
-    ],
-    [
-        "method" => "GET",
-        "path" => "/login",
-        "handler" => [Auth::class, "status"]
-    ],
-    [
-        "method" => "POST",
-        "path" => "/register",
-        "handler" => [Auth::class, "register"]
-    ],
     [
         "method" => "GET",
         "path" => "/logout",
         "handler" => [Auth::class, "logout"]
-    ], [
-        "path" => "/reset",
-        "roles" => ["isuper"],
-        "handler" => [Auth::class, "reseteverything"]
+    ],
+    [
+        "path" => "/auth/profile",
+        "child" => [
+            ["handler" => [Auth::class, "profile"]],
+            ["method" => "POST", "handler" => [Auth::class, "profileupdate"]]
+        ]
     ]
 ];
