@@ -93,9 +93,21 @@ implode("
         foreach ($this->table as $item) {
             $Name = ucfirst($item['name']);
             $import[] = 'import { ' . $Name . ' } from "../Interface/Model/' . $Name . '";';
-            $service[] = 'export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
+            // "islogin": { "under": "book" } → the URL needs the book id, known only at runtime
+            $islogin = $item['access']['islogin'] ?? null;
+            $under = is_array($islogin) && !array_is_list($islogin) ? ($islogin['under'] ?? null) : null;
+            if ($under) {
+                $name = $item['name'];
+                $service[] = '/** "under": "' . $under . '". Before use: ' . $Name . 'Service.seturl(' . $name . 'Url(' . $under . '_id)) */
+export const ' . $name . 'Url = (' . $under . '_id: number | string) => `/islogin/' . $under . '/${' . $under . '_id}/' . $name . '/`;
+export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
+    .seTable("' . $name . '")
+    .seturl("/islogin/' . $under . '/:' . $under . '_id/' . $name . '/");';
+            } else {
+                $service[] = 'export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
     .seTable("' . $item['name'] . '")
     .seturl("/islogin/' . $item['name'] . '/");';
+            }
         }
         $solidservice_write = $x . "\n" . implode("\n", $import) . "\n\n" . implode("\n", $service) . "\n";
         if (count($customExports) > 0) {
