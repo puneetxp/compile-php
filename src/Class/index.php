@@ -88,6 +88,22 @@ class index {
 
     public $table = [];
 
+    /**
+     * A crud entry is either letters (["c","r"]) or an object ({ "can": ["c","r"], "under": "book" }).
+     * Returns the same crud block with every entry reduced to its letters.
+     */
+    public static function crudLetters(array $crud): array {
+        $letters = fn($entry) => is_array($entry) && !array_is_list($entry) ? ($entry['can'] ?? []) : $entry;
+        foreach ($crud as $audience => $entry) {
+            if ($audience === 'roles' && is_array($entry)) {
+                $crud['roles'] = array_map($letters, $entry);
+            } else {
+                $crud[$audience] = $letters($entry);
+            }
+        }
+        return $crud;
+    }
+
     public function __construct(private $rawtable, private $all) {
         $this->table["name"] = $this->rawtable['name'];
         $this->table["table"] = $this->rawtable['table'];
@@ -95,7 +111,10 @@ class index {
             $this->table["type"] = $this->rawtable['type'];
         }
         if (isset($rawtable['crud'])) {
-            $this->table["crud"] = $this->rawtable['crud'];
+            // "access" keeps each entry as written ({ "can", "owner", "under" } or a list);
+            // "crud" is letters only, so every generator keeps reading it as before.
+            $this->table["access"] = $this->rawtable['crud'];
+            $this->table["crud"] = index::crudLetters($this->rawtable['crud']);
         }
         if (isset($rawtable['unique'])) {
             $this->table["unique"] = $this->rawtable['unique'];
