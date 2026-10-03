@@ -1,64 +1,67 @@
-import {
-  hash,
-  response,
-  Session,
-} from "../../dep.ts";
+import { hash, response, Session } from "../../dep.ts";
 import { Active_role } from "../Interface/Model/Active_role.ts";
+import { User } from "../Interface/Model/User.ts";
 import { Active_role$ } from "../Model/Active_role.ts";
 import { User$ } from "../Model/User.ts";
 
+type UserRow = User & { password?: string | null; enable?: number };
+// the runtime's session user type (it may declare extra optional fields such as telegram_id)
+type SessionUser = Parameters<Session["startnew"]>[0];
+
+function publicUser(user: UserRow) {
+  const { password: _password, ...rest } = user;
+  return rest;
+}
+
 export class AuthController {
-  static async Status(
-    Session: Session,
-  ) {
-    if (Session.ActiveLoginSession) {
-      return await response.JSON(
-        Session.getLogin().Login,
-        Session,
-      );
+  static async Status(session: Session) {
+    if (session.ActiveLoginSession) {
+      return await response.JSON(session.getLogin().Login, session);
     }
     return await response.JSONF(false);
   }
 
-  static async Login(Session: Session) {
-    const body = await Session.req.json();
-    body.password = await hash.sha3_256(body.password);
-    const user = await User$.find(body.email, "email");
-    if (user) {
-      if (body.password == user.password) {
-        const active_roles: Active_role[] = await Active_role$.where({
-          "user_id": user.id,
-        }).Item;
-        const _session = Session.startnew(user, active_roles);
-        return await response.JSONF(
-          _session.getLogin().Login,
-          _session.returnCookie(),
-        );
-      }
-      return await response.JSONF("Password is Incorrect");
+  static async Login(session: Session) {
+    const body = await session.req.json();
+    const user: UserRow | undefined = (await User$().find(body.email, "email")).item;
+    if (!user) {
+      return await response.JSONF("User Not Found", {}, 404);
     }
-    return await response.JSONF("User Not Found");
+    if (user.enable === 0) {
+      return await response.JSONF("This account has been disabled", {}, 403);
+    }
+    if ((await hash.sha3_256(body.password)) !== user.password) {
+      return await response.JSONF("Password is Incorrect", {}, 401);
+    }
+    const active_roles: Active_role[] = (await Active_role$().where({ user_id: [user.id] }).get()).items;
+    const _session = session.startnew(user as SessionUser, active_roles);
+    return await response.JSONF(_session.getLogin().Login, _session.returnCookie());
   }
 
-  static async Register(Session: Session) {
-    const body = await Session.req.json();
-    body.password = await hash.sha3_256(body.password);
-    const register = await (await User$.create([body])).lastinsertid();
-    const _session = Session.startnew(register[0]);
-    return await response.JSONF(
-      _session.getLogin().Login,
-      _session.returnCookie(),
-    );
+  static async Register(session: Session) {
+    const body = await session.req.json();
+    if (!body.email || !body.password) {
+      return await response.JSONF("Email and password are required", {}, 422);
+    }
+    if ((await User$().find(body.email, "email")).item) {
+      return await response.JSONF({ email: "Email Already Taken" }, {}, 422);
+    }
+    const user: UserRow = (await User$().create({
+      name: body.name,
+      email: body.email,
+      password: await hash.sha3_256(body.password),
+    })).item;
+    const _session = session.startnew(user as SessionUser, []);
+    return await response.JSONF(_session.getLogin().Login, _session.returnCookie());
   }
 
-  static async UpdateProfile(Session: Session) {
-    return await response.JSON({ ok: "diff" });
+  static async Profile(session: Session) {
+    const user: UserRow = (await User$().find(session.Login.id)).item;
+    return await response.JSON(publicUser(user), session);
   }
 
-  static async Logout(
-    session: Session,
-  ) {
+  static async Logout(session: Session) {
     session.removeSession();
-    return await response.JSON({ ok: "Logout" });
+    return await response.JSON({ ok: "Logout" }, session);
   }
 }
