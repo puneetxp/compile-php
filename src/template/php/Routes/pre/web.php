@@ -5,6 +5,7 @@ require __DIR__ . "/api/Ipublic.php";
 require __DIR__ . "/api/Islogin.php";
 require __DIR__ . "/api/Isuper.php";
 require __DIR__ . "/api/Iauth.php";
+require __DIR__ . "/api/Inotlogin.php";
 require __DIR__ . "/api/Ienv.php";
 require __DIR__ . "/view/public.php";
 require __DIR__ . "/view/auth.php";
@@ -20,9 +21,10 @@ $routes = [
         "path" => "api",
         "child" =>
         [
+            ...$inotlogin,
             $ipublic,
             [
-                "ilogin" => true,
+                "islogin" => true,
                 "child" => [$isuper, ...$ienv, ...$iauth, $islogin]
             ]
         ]
