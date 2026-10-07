@@ -125,7 +125,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                 foreach ($table['relations'][$key] as $id => $value) {
                     if ($id == "callback") {
                         $c = true;
-                        $relations .= ",'callback'" . ':()=>' . ucfirst($value) . "$" ;
+                        $relations .= ",'callback'" . ':()=>' . ucfirst($value) . "$()" ;
                         $import[] = "import { " . ucfirst($value) . "$ } from './" . ucfirst($value) . ".ts';";
                         ++$f;
                     } else {
@@ -140,7 +140,7 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
                     }
                 }
                 if ($c == false) {
-                    $relations .= ",'callback'" . ':()=>' . ucfirst($key) . "$" ;
+                    $relations .= ",'callback'" . ':()=>' . ucfirst($key) . "$()" ;
                     $import[] = "import { " . ucfirst($key) . "$ } from './" . ucfirst($key) . ".ts';";
                 }
                 ++$t;
@@ -263,7 +263,8 @@ export const " . ucfirst($table['name']) . "$ = () => new Standard();";
             throw new \Exception($item['name'] . '.json "public" cannot use "owner" or "under": public routes have no logged-in user.');
         }
         $class = ucfirst($key) . ucfirst($item['name']) . 'Controller';
-        $entry = ['path' => '/' . $item['name'], 'crud' => ['class' => $class, 'crud' => $access['can']]];
+        // "path": the URL segment when it differs from the model name (book_asset served at /asset)
+        $entry = ['path' => '/' . ($access['path'] ?? $item['name']), 'crud' => ['class' => $class, 'crud' => $access['can']]];
         if ($role == '') {
             $GLOBALS['For'][$key] ??= ['path' => $key, 'controller' => [], 'child' => []];
             $group = &$GLOBALS['For'][$key];
@@ -281,8 +282,12 @@ export const " . ucfirst($table['name']) . "$ = () => new Standard();";
         $controller_write = (isset($access['under']) || isset($access['owner']))
             ? $this->denoScopedController($item, $access, $key)
             : $this->denoController($item, $access['can'], $key);
-        $controller = index::fopen_dir($_ENV['dir'] . "/deno/App/" . ucfirst('controller/') . ucfirst($key) . '/' . ucfirst($item['name']) . 'Controller.ts');
-        fwrite($controller, $controller_write);
+        $file = $_ENV['dir'] . "/deno/App/" . ucfirst('controller/') . ucfirst($key) . '/' . ucfirst($item['name']) . 'Controller.ts';
+        // config.json "table": { "<model>": true } means the controllers are hand-written: never overwrite them
+        if (($this->json['table'][$item['name']] ?? false) === true && is_file($file)) {
+            return;
+        }
+        fwrite(index::fopen_dir($file), $controller_write);
     }
 
     /** Controller for rows that belong to the user ("owner") or to a parent row the user owns ("under"). */

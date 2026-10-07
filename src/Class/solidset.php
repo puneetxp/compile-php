@@ -98,11 +98,12 @@ implode("
             $under = is_array($islogin) && !array_is_list($islogin) ? ($islogin['under'] ?? null) : null;
             if ($under) {
                 $name = $item['name'];
+                $segment = $islogin['path'] ?? $name;
                 $service[] = '/** "under": "' . $under . '". Before use: ' . $Name . 'Service.seturl(' . $name . 'Url(' . $under . '_id)) */
-export const ' . $name . 'Url = (' . $under . '_id: number | string) => `/islogin/' . $under . '/${' . $under . '_id}/' . $name . '/`;
+export const ' . $name . 'Url = (' . $under . '_id: number | string) => `/islogin/' . $under . '/${' . $under . '_id}/' . $segment . '/`;
 export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
     .seTable("' . $name . '")
-    .seturl("/islogin/' . $under . '/:' . $under . '_id/' . $name . '/");';
+    .seturl("/islogin/' . $under . '/:' . $under . '_id/' . $segment . '/");';
             } else {
                 $service[] = 'export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
     .seTable("' . $item['name'] . '")
