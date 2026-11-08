@@ -177,6 +177,9 @@ class pythonset {
         $content[] = '    """' . $className . ' model for ' . $tableName . ' table"""';
         $content[] = '    ';
         $content[] = "    table = '$tableName'";
+        $content[] = "    name = '" . $table['name'] . "'";
+        // every column, for with_join's select list
+        $content[] = '    columns = [' . implode(', ', array_map(fn($c) => "'" . $c . "'", array_values(array_unique(array_column($table['data'], 'name'))))) . ']';
         $content[] = '    ';
         $content[] = '    fillable = [';
         $content = [...$content, ...$fillableFields];
