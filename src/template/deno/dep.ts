@@ -4,7 +4,7 @@ export {
   DB,
   hash,
   hashPassword,
-  PasswordTooLong,
+  newPasswordError,
   Model,
   response,
   Router,

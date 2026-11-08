@@ -1,4 +1,4 @@
-import { hashPassword, PasswordTooLong, response, Session, verifyPassword } from "../../dep.ts";
+import { hashPassword, newPasswordError, response, Session, verifyPassword } from "../../dep.ts";
 import { Active_role } from "../Interface/Model/Active_role.ts";
 import { User } from "../Interface/Model/User.ts";
 import { Active_role$ } from "../Model/Active_role.ts";
@@ -51,15 +51,12 @@ export class AuthController {
     if ((await User$().find(body.email, "email")).item) {
       return await response.JSONF({ email: "Email Already Taken" }, {}, 422);
     }
-    let password: string;
-    try {
-      password = await hashPassword(body.password);
-    } catch (e) {
-      if (e instanceof PasswordTooLong) {
-        return await response.JSONF({ password: e.message }, {}, 422);
-      }
-      throw e;
+    // 6 to 128 characters; the message says nothing about how it is stored.
+    const passwordError = newPasswordError(String(body.password));
+    if (passwordError) {
+      return await response.JSONF({ password: passwordError }, {}, 422);
     }
+    const password = await hashPassword(body.password);
     const user: UserRow = (await User$().create({
       name: body.name,
       email: body.email,
