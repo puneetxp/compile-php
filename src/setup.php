@@ -11,7 +11,8 @@ use Puneetxp\CompilePhp\Class\{
     solidset,
     vueset,
     angularset,
-    pythonset
+    pythonset,
+    golangset
 };
 
 class setup {
@@ -59,6 +60,10 @@ class setup {
         if (in_array('python', $this->json_set['back-end'])) {
             $this->python_set();
             echo "Python Build\n";
+        }
+        //go
+        if (in_array('go', $this->json_set['back-end'])) {
+            (new golangset($this->table, $this->json_set))->golangset();
         }
         //angular
         if (in_array('angular', $this->json_set['front-end'])) {
