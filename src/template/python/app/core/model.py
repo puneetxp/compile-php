@@ -5,7 +5,26 @@ Similar to compile-php Model.php - provides fluent query interface
 
 from typing import Any, Dict, List, Optional, Type
 
-from app.core.db import DB
+from app.core.db import DB, ident
+
+
+class _chain:
+    """
+    A method usable on the class (starts a query on a new instance) and on an
+    instance (continues that instance's query). A plain classmethod would
+    start over on every call, so Model.where(a).where(b) lost a.
+    """
+
+    def __init__(self, fn):
+        self.fn = fn
+        self.__doc__ = fn.__doc__
+
+    def __get__(self, obj, cls):
+        def bound(*args, **kwargs):
+            return self.fn(obj if obj is not None else cls(), *args, **kwargs)
+
+        bound.__doc__ = self.fn.__doc__
+        return bound
 
 
 class Model:
@@ -20,13 +39,17 @@ class Model:
     """
 
     table: str = ""
+    name: str = ""
     fillable: List[str] = []
+    columns: List[str] = []  # every column, for with_join's select list
     relations: Dict = {}
 
     def __init__(self):
         self.items = []
         self.singular = False
         self.db = DB(self.table)
+        self._has_depth = 0  # nesting level inside where_has (0 = the query itself)
+        self._sql_name: Optional[str] = None  # this table's alias inside a where_has
         self.with_relations = []
         self.relation_data = {}
         self.page = {}
@@ -64,10 +87,116 @@ class Model:
         instance.get()
         return instance
 
-    @classmethod
-    def where(cls, where: Dict) -> "Model":
-        """Add WHERE clause - strictly takes a dictionary"""
-        return cls()._where(where)
+    # ---- the chain --------------------------------------------------------
+    # where, where_has, where_not_has, order_by and limit start a query on the
+    # class (User.where({...})) or continue one on an instance
+    # (.where({...})); see _chain. The SQL is the same as every adapter's for
+    # the same chain (spec/query_cases.json).
+
+    @_chain
+    def where(self, where: Dict, reset: bool = False) -> "Model":
+        """Add col IN (...) conditions; calls chain with AND. Columns not on the model are ignored."""
+        if reset:
+            self.db.reset()
+        self._where(where)
+        return self
+
+    @_chain
+    def where_has(self, relation: str, where: Any = None, type: str = "AND") -> "Model":
+        """Keep rows with at least one related row; where is a dict or a function given the related model."""
+        return self._relation_exists(relation, where, type, "EXISTS")
+
+    @_chain
+    def where_not_has(self, relation: str, where: Any = None, type: str = "AND") -> "Model":
+        """Keep rows with no related row matching where."""
+        return self._relation_exists(relation, where, type, "NOT EXISTS")
+
+    @_chain
+    def order_by(self, column: str, direction: str = "ASC") -> "Model":
+        self.db.order_q(column, direction)
+        return self
+
+    @_chain
+    def limit(self, count: int, offset: int = 0) -> "Model":
+        if not isinstance(count, int) or not isinstance(offset, int) or count < 0 or offset < 0:
+            raise ValueError(f"limit needs whole numbers >= 0, got {count}, {offset}")
+        self.db.limit_q(count).offset_q(offset)
+        return self
+
+    def to_sql(self) -> Dict[str, Any]:
+        """The SQL and params the chain would run, without running it."""
+        return self.db.to_sql()
+
+    def _relation_exists(self, name: str, where: Any, type: str, op: str) -> "Model":
+        rel, related = self._related(name)
+        # Aliased <table>__<depth>, so relations to the same table and nested
+        # calls refer to the right row; the alias depends only on the chain.
+        related._has_depth = self._has_depth + 1
+        alias = f'{related.table}__{related._has_depth}'
+        related._sql_name = alias
+        if callable(where):
+            where(related)
+        elif where:
+            related.where(where)
+        inner = related.db.where_sql()
+        related.db.reset()
+        outer = self._sql_name or self.table
+        sql = (f"{op} (SELECT 1 FROM {related.table} AS {ident(alias)} WHERE {ident(alias)}.{ident(rel['key'])}"
+               f" = {ident(outer)}.{ident(rel['name'])}" + (f" AND ({inner['sql']})" if inner["sql"] else "") + ")")
+        self.db.where_raw_q(sql, inner["params"], type)
+        return self
+
+    def with_join_sql(self, relations: List[str]) -> Dict[str, Any]:
+        """The SELECT with_join(relations) would run: a LEFT JOIN per relation."""
+        base = self.table
+        select = self._select_list(base, self._columns())
+        joins = ""
+        for name in relations:
+            rel, related = self._related(name)
+            alias = f"r_{name}"
+            select += self._select_list(alias, related._columns(), name)
+            joins += (f" LEFT JOIN {related.table} {ident(alias)} ON {ident(base)}.{ident(rel['name'])}"
+                      f" = {ident(alias)}.{ident(rel['key'])}")
+        where = self.db.where_sql(base)
+        sql = (f"SELECT {', '.join(select)} FROM {self.table} {ident(base)}{joins}"
+               + (f" WHERE {where['sql']}" if where["sql"] else "") + self.db.order_sql(base) + self.db.limit_sql())
+        self.db.reset()
+        return {"sql": sql, "params": where["params"]}
+
+    def with_join(self, relations: List[str]) -> "Model":
+        """Rows with their related rows in one query; related columns nested as row[relation]."""
+        q = self.with_join_sql(relations)
+        rows = DB.raw(q["sql"], q["params"]).many()
+        out = []
+        for row in rows:
+            base, nested = {}, {}
+            for key, value in row.items():
+                rel, sep, col = key.partition("__")
+                if sep and rel in relations:
+                    nested.setdefault(rel, {})[col] = value
+                else:
+                    base[key] = value
+            out.append({**base, **nested})
+        self.items = out
+        return self
+
+    def _related(self, name: str):
+        """A relation's entry and a new instance of its model. The callback may
+        return the model class (generated models) or an instance."""
+        rel = self.relations.get(name)
+        if not rel:
+            raise ValueError(f'{self.name}: no relation "{name}" (has: {", ".join(self.relations)})')
+        target = rel["callback"]()
+        return rel, (target() if isinstance(target, type) else target)
+
+    def _columns(self) -> List[str]:
+        return list(self.columns) if self.columns else (["id"] + [c for c in self.fillable if c != "id"])
+
+    @staticmethod
+    def _select_list(alias: str, cols: List[str], prefix: Optional[str] = None) -> List[str]:
+        if not cols:
+            return [ident(alias) + ".*"]
+        return [f"{ident(alias)}.{ident(c)} AS {ident(f'{prefix}__{c}' if prefix else c)}" for c in cols]
 
     def save(self) -> "Model":
         """Save current record (singular)"""
@@ -93,13 +222,17 @@ class Model:
                 self.singular = True
         return self
 
-    def delete(self) -> bool:
-        """Delete current record (singular)"""
+    @_chain
+    def delete(self, where: Optional[Dict] = None):
+        """
+        Model.delete({...}) deletes the matching rows and returns how many;
+        record.delete() deletes that record (True when it had an id). Both were
+        defined before, and the second definition silently replaced the first.
+        """
+        if where is not None:
+            return self.db.where(where).delete().exe().rows
         if not self.singular or not isinstance(self.items, dict) or "id" not in self.items:
-            # Fallback to class delete if where was called but not first()
-            # But the service expects record.delete()
             return False
-
         self.db.where({"id": self.items["id"]}).delete().exe()
         return True
 
@@ -222,18 +355,15 @@ class Model:
         return self
 
     def _upsert(self, data: List[Dict]) -> "Model":
-        """Internal upsert"""
+        """Fillable columns plus id: without the id an upsert could only insert."""
         filtered_data = []
         for row in data:
-            filtered_data.append({k: v for k, v in row.items() if k in self.fillable})
+            clean = {k: v for k, v in row.items() if k in self.fillable}
+            if row.get("id") is not None:
+                clean["id"] = row["id"]
+            filtered_data.append(clean)
         self.db.upsert(filtered_data)
         return self
-
-    @classmethod
-    def delete(cls, where: Dict) -> int:
-        """Delete records"""
-        instance = cls()
-        return instance.db.where(where).delete().exe().rows
 
     def delete_current(self) -> "Model":
         """Delete current records"""
