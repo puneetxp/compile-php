@@ -3,10 +3,13 @@ export {
   compile_url_pattern,
   DB,
   hash,
+  hashPassword,
+  PasswordTooLong,
   Model,
   response,
   Router,
   Session,
+  verifyPassword,
   setRole,
-} from "jsr:@puneetxp/the@0.1.16";
-export type { _Routes, relation, Route_Group_with } from "jsr:@puneetxp/the@0.1.16";
+} from "jsr:@puneetxp/the@0.1.17";
+export type { _Routes, relation, Route_Group_with } from "jsr:@puneetxp/the@0.1.17";

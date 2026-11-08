@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -44,12 +43,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var origins []string
-	if o := env("ORIGINS", ""); o != "" {
-		origins = strings.Split(o, ",") // e.g. https://app.example.com
-	}
+	// CORS=on to let other sites call the API; CORS_ORIGINS limits it, e.g.
+	// https://app.example.com (comma separated). Off by default.
+	corsOn, origins := router.CORSFromEnv()
 	r, err := router.New(routes.All(), router.Options{
 		Cookie:  session.CookieOptions{Domain: env("COOKIE_DOMAIN", ""), Secure: env("COOKIE_SECURE", "") != ""},
+		CORS:    corsOn,
 		Origins: origins,
 	})
 	if err != nil {
