@@ -169,11 +169,16 @@ class setup {
             $this->route_use_multiple .= "use $key{" . implode(',', array_unique($value)) . "}; ";
         }
         
-        // Check if PostgreSQL or MySQL
-        if (isset($this->json_set['postgresql']) && $this->json_set['postgresql'] === true) {
-            // Use PostgreSQL
-            $rolesInsert = "INSERT INTO roles (name) VALUES ('" . implode("'),('", array_values(array_unique($this->roles))) . "');";
-            postgresql::alltable($this->table, ["roles" => $rolesInsert]);
+        // "postgresql": true  -> PostgreSQL is the database (database/*.sql).
+        // "postgresql": "also" -> MySQL is, and the PostgreSQL schema is also
+        //                         written to database/Postgresql/.
+        $postgresql = $this->json_set['postgresql'] ?? false;
+        $pgRoles = ["roles" => "INSERT INTO roles (name) VALUES ('" . implode("'),('", array_values(array_unique($this->roles))) . "');"];
+        if ($postgresql === "also") {
+            postgresql::alltable($this->table, $pgRoles, primary: false);
+        }
+        if ($postgresql === true) {
+            postgresql::alltable($this->table, $pgRoles);
         } else {
             // Use MySQL (default)
             mysql::alltable($this->table, ["roles" => 'INSERT INTO roles (name) VALUES ("' . implode('"),("', array_values(array_unique($this->roles))) . '");']);
