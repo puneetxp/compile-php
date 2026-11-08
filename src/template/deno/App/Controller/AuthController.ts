@@ -1,4 +1,4 @@
-import { hash, response, Session } from "../../dep.ts";
+import { hashPassword, PasswordTooLong, response, Session, verifyPassword } from "../../dep.ts";
 import { Active_role } from "../Interface/Model/Active_role.ts";
 import { User } from "../Interface/Model/User.ts";
 import { Active_role$ } from "../Model/Active_role.ts";
@@ -30,8 +30,13 @@ export class AuthController {
     if (user.enable === 0) {
       return await response.JSONF("This account has been disabled", {}, 403);
     }
-    if ((await hash.sha3_256(body.password)) !== user.password) {
+    const { ok, rehash } = await verifyPassword(body.password ?? "", user.password);
+    if (!ok) {
       return await response.JSONF("Password is Incorrect", {}, 401);
+    }
+    if (rehash) {
+      // An old SHA3 hash: store bcrypt now that the password is known.
+      await User$().where({ id: [user.id] }).update({ password: await hashPassword(body.password) });
     }
     const active_roles: Active_role[] = (await Active_role$().where({ user_id: [user.id] }).get()).items;
     const _session = session.startnew(user as SessionUser, active_roles);
@@ -46,10 +51,19 @@ export class AuthController {
     if ((await User$().find(body.email, "email")).item) {
       return await response.JSONF({ email: "Email Already Taken" }, {}, 422);
     }
+    let password: string;
+    try {
+      password = await hashPassword(body.password);
+    } catch (e) {
+      if (e instanceof PasswordTooLong) {
+        return await response.JSONF({ password: e.message }, {}, 422);
+      }
+      throw e;
+    }
     const user: UserRow = (await User$().create({
       name: body.name,
       email: body.email,
-      password: await hash.sha3_256(body.password),
+      password,
     })).item;
     const _session = session.startnew(user as SessionUser, []);
     return await response.JSONF(_session.getLogin().Login, _session.returnCookie());
