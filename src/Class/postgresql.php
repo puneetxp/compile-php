@@ -17,8 +17,8 @@ class postgresql {
             }
             $columnNames = array_map(fn($col) => trim((string) $col), $columnList);
             $indexName = $table['name'] . '_' . implode('_', $columnNames) . '_unique';
-            $clauses[] = $prefix . 'CONSTRAINT ' . $indexName . ' UNIQUE (' .
-                implode(',', array_map(fn($col) => '"' . $col . '"', $columnNames)) . ')';
+            $clauses[] = $prefix . 'CONSTRAINT ' . self::q($indexName) . ' UNIQUE (' .
+                implode(',', array_map(fn($col) => self::q($col), $columnNames)) . ')';
         }
 
         return $clauses;
@@ -38,177 +38,254 @@ class postgresql {
                 ), $tables);
     }
 
-    /**
-     * Convert MySQL data types to PostgreSQL data types
-     */
-    public static function convertDataType($mysqlType) {
-        $mysqlType = strtolower(trim($mysqlType));
-        
-        // Handle types with parameters
-        if (preg_match('/^varchar\((\d+)\)$/i', $mysqlType, $matches)) {
-            return "VARCHAR(" . $matches[1] . ")";
-        }
-        if (preg_match('/^decimal\((\d+),(\d+)\)$/i', $mysqlType, $matches)) {
-            return "DECIMAL(" . $matches[1] . "," . $matches[2] . ")";
-        }
-        if (preg_match('/^vector\((\d+)\)$/i', $mysqlType, $matches)) {
-            return "vector(" . $matches[1] . ")";
-        }
-        
-        // Map MySQL types to PostgreSQL types
-        $typeMap = [
-            'bigint' => 'BIGINT',
-            'bigint unsigned' => 'BIGINT',
-            'int' => 'INTEGER',
-            'integer' => 'INTEGER',
-            'tinyint(1)' => 'SMALLINT',
-            'timestamp' => 'TIMESTAMP',
-            'date' => 'DATE',
-            'text' => 'TEXT',
-            'text[]' => 'TEXT[]',
-            'longtext' => 'TEXT',
-            'jsonb' => 'JSONB',
-            'json' => 'JSONB',
-            'boolean' => 'BOOLEAN',
-        ];
-        
-        return $typeMap[$mysqlType] ?? strtoupper($mysqlType);
+    /** Quote one identifier for PostgreSQL. */
+    public static function q(string $name): string {
+        return '"' . str_replace('"', '""', $name) . '"';
     }
 
     /**
-     * Convert MySQL attributes to PostgreSQL attributes
+     * Convert a model's MySQL column type to PostgreSQL.
+     *
+     * Returns [type, extra]: `extra` holds column modifiers that were written
+     * into the type in the model (e.g. "varchar(255) UNIQUE"), to append after
+     * the type. Unsigned types widen where PostgreSQL's signed type is too
+     * small (int unsigned -> BIGINT). Unknown types are kept as written, with
+     * a warning, so a new type shows up instead of being silently dropped.
+     */
+    public static function convertType(string $mysqlType): array {
+        $t = strtolower(trim(preg_replace('/\s+/', ' ', $mysqlType)));
+        $extra = [];
+        if (preg_match('/\bunique\b/', $t)) {
+            $extra[] = 'UNIQUE';
+            $t = trim(preg_replace('/\bunique\b/', '', $t));
+        }
+        $unsigned = (bool) preg_match('/\bunsigned\b/', $t);
+        $t = trim(preg_replace('/\b(unsigned|zerofill)\b/', '', $t));
+        $t = trim(preg_replace('/\s+/', ' ', $t));
+
+        if (!preg_match('/^([a-z ]+?)\s*(?:\(([^)]*)\))?\s*(\[\])?$/', $t, $m)) {
+            fwrite(STDERR, "postgresql: unrecognised type '$mysqlType', kept as written\n");
+            return [strtoupper($t), implode(' ', $extra)];
+        }
+        $base = trim($m[1]);
+        $args = isset($m[2]) && $m[2] !== '' ? preg_replace('/\s+/', '', $m[2]) : null;
+        $array = !empty($m[3]) ? '[]' : '';
+
+        $type = match ($base) {
+            'tinyint', 'smallint', 'year' => $unsigned && $base === 'smallint' ? 'INTEGER' : 'SMALLINT',
+            'mediumint' => 'INTEGER',
+            'int', 'integer' => $unsigned ? 'BIGINT' : 'INTEGER',
+            'bigint' => 'BIGINT',
+            'serial' => 'BIGSERIAL',
+            // MySQL FLOAT(M,D)/DOUBLE(M,D) are approximate types; the (M,D)
+            // only rounds on display, so keep the storage class.
+            'float' => 'REAL',
+            'double', 'double precision', 'real' => 'DOUBLE PRECISION',
+            'decimal', 'numeric', 'dec', 'fixed' => 'NUMERIC' . ($args !== null ? "($args)" : ''),
+            'bool', 'boolean' => 'BOOLEAN',
+            'bit' => $args === null || $args === '1' ? 'BOOLEAN' : "BIT($args)",
+            'char' => 'CHAR' . ($args !== null ? "($args)" : ''),
+            'varchar', 'character varying' => 'VARCHAR' . ($args !== null ? "($args)" : ''),
+            'tinytext', 'text', 'mediumtext', 'longtext' => 'TEXT',
+            'binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob' => 'BYTEA',
+            'date' => 'DATE',
+            'time' => 'TIME',
+            'datetime', 'timestamp' => 'TIMESTAMP' . ($args !== null ? "($args)" : ''),
+            'json', 'jsonb' => 'JSONB',
+            'uuid' => 'UUID',
+            'vector' => 'vector' . ($args !== null ? "($args)" : ''),
+            'enum', 'set' => 'TEXT',
+            default => null,
+        };
+        if ($type === null) {
+            fwrite(STDERR, "postgresql: unrecognised type '$mysqlType', kept as written\n");
+            $type = strtoupper($base) . ($args !== null ? "($args)" : '');
+        }
+        if ($base === 'enum' && $args !== null) {
+            // enum('a','b') -> TEXT plus a CHECK added by the caller.
+            $extra[] = '__ENUM__(' . $m[2] . ')';
+        }
+        return [$type . $array, implode(' ', $extra)];
+    }
+
+    /** Backward-compatible wrapper: the PostgreSQL type only. */
+    public static function convertDataType($mysqlType) {
+        return self::convertType((string) $mysqlType)[0];
+    }
+
+    /**
+     * Convert MySQL column attributes (NOT NULL, DEFAULT ..., PRIMARY KEY)
+     * to PostgreSQL. MySQL-only keywords are removed; double-quoted string
+     * defaults become single-quoted. ON UPDATE CURRENT_TIMESTAMP is removed
+     * here and done by a trigger instead (see onUpdateColumns()).
      */
     public static function convertAttributes($sqlAttribute, $isId = false) {
-        $attr = trim($sqlAttribute);
-        
-        // Remove MySQL-specific keywords
-        $attr = str_replace('UNSIGNED', '', $attr);
-        $attr = str_replace('AUTO_INCREMENT', '', $attr);
-        
-        // Remove MySQL COMMENT syntax (COMMENT 'text' or COMMENT "text")
-        $attr = preg_replace("/COMMENT\s+['\"][^'\"]*['\"]/i", '', $attr);
-        
-        // Handle PRIMARY KEY for id field
-        if ($isId && strpos($attr, 'PRIMARY KEY') !== false) {
+        $attr = ' ' . trim((string) $sqlAttribute) . ' ';
+
+        if ($isId && stripos($attr, 'PRIMARY KEY') !== false) {
             return 'PRIMARY KEY';
         }
-        
-        // Handle DEFAULT CURRENT_TIMESTAMP
-        $attr = str_replace('DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP', 'DEFAULT CURRENT_TIMESTAMP', $attr);
-        
-        // Clean up extra spaces
-        $attr = preg_replace('/\s+/', ' ', $attr);
-        
-        return trim($attr);
+        $attr = preg_replace('/\bON\s+UPDATE\s+CURRENT_TIMESTAMP(\(\d*\))?/i', '', $attr);
+        $attr = preg_replace('/\b(UNSIGNED|ZEROFILL|AUTO_INCREMENT)\b/i', '', $attr);
+        $attr = preg_replace("/\bCOMMENT\s+('([^'\\\\]|''|\\\\.)*'|\"([^\"\\\\]|\"\"|\\\\.)*\")/i", '', $attr);
+        $attr = preg_replace('/\b(CHARACTER\s+SET|CHARSET|COLLATE)\s+\w+/i', '', $attr);
+        // DEFAULT "text" -> DEFAULT 'text'
+        $attr = preg_replace_callback('/\bDEFAULT\s+"((?:[^"\\\\]|\\\\.)*)"/i',
+            fn($m) => "DEFAULT '" . str_replace("'", "''", stripslashes($m[1])) . "'", $attr);
+        $attr = preg_replace('/\bCURRENT_TIMESTAMP\(\)/i', 'CURRENT_TIMESTAMP', $attr);
+
+        return trim(preg_replace('/\s+/', ' ', $attr));
+    }
+
+    /** One column definition: "name" TYPE attributes. */
+    public static function column(array $item): string {
+        $isId = $item['name'] === 'id';
+        if ($isId && stripos($item['sql_attribute'] ?? '', 'AUTO_INCREMENT') !== false) {
+            return self::q('id') . ' BIGSERIAL PRIMARY KEY';
+        }
+        [$type, $extra] = self::convertType($item['mysql_data']);
+        $check = '';
+        if (preg_match('/__ENUM__\((.*)\)/', $extra, $m)) {
+            $check = ' CHECK (' . self::q($item['name']) . ' IN (' . $m[1] . '))';
+            $extra = trim(str_replace($m[0], '', $extra));
+        }
+        $attr = self::convertAttributes($item['sql_attribute'] ?? '', $isId);
+        return implode(' ', array_filter([self::q($item['name']), $type, $extra, $attr], fn($p) => $p !== '')) . $check;
+    }
+
+    /** Columns that MySQL bumps with ON UPDATE CURRENT_TIMESTAMP. */
+    public static function onUpdateColumns(array $table): array {
+        $cols = [];
+        foreach ($table['data'] as $item) {
+            if (preg_match('/\bON\s+UPDATE\s+CURRENT_TIMESTAMP/i', $item['sql_attribute'] ?? '')) {
+                $cols[] = $item['name'];
+            }
+        }
+        return array_values(array_unique($cols));
+    }
+
+    /**
+     * Shared trigger function for ON UPDATE CURRENT_TIMESTAMP. Like MySQL, it
+     * sets the column to now() when the row changed and the UPDATE did not set
+     * the column itself.
+     */
+    public static function onUpdateFunction(): string {
+        return <<<'SQL'
+CREATE OR REPLACE FUNCTION the_on_update_timestamp() RETURNS trigger AS $$
+DECLARE col text;
+BEGIN
+  FOREACH col IN ARRAY TG_ARGV LOOP
+    IF to_jsonb(NEW) - col IS DISTINCT FROM to_jsonb(OLD) - col
+       AND to_jsonb(NEW) -> col IS NOT DISTINCT FROM to_jsonb(OLD) -> col THEN
+      NEW := jsonb_populate_record(NEW, jsonb_build_object(col, CURRENT_TIMESTAMP));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+SQL;
+    }
+
+    public static function onUpdateTrigger(array $table): string {
+        $cols = self::onUpdateColumns($table);
+        if (!$cols) {
+            return '';
+        }
+        $args = implode(', ', array_map(fn($c) => "'" . str_replace("'", "''", $c) . "'", $cols));
+        $name = self::q($table['name'] . '_on_update');
+        return 'DROP TRIGGER IF EXISTS ' . $name . ' ON ' . self::q($table['table']) . ";\n" .
+            'CREATE TRIGGER ' . $name . ' BEFORE UPDATE ON ' . self::q($table['table']) .
+            ' FOR EACH ROW EXECUTE FUNCTION the_on_update_timestamp(' . $args . ');';
     }
 
     public static function tablealter($table) {
-        $columns = array_map(
-            fn($item) =>
-            "ADD COLUMN IF NOT EXISTS \"" . $item['name'] . "\" " .
-            self::convertDataType($item['mysql_data']) . ' ' .
-            self::convertAttributes($item['sql_attribute']),
-            $table['data']
-        );
+        $columns = array_map(fn($item) => 'ADD COLUMN IF NOT EXISTS ' . self::column($item), $table['data']);
         $uniqueConstraints = self::uniqueClauses($table, 'ADD ');
-        
-        return 'ALTER TABLE ' . $table['table'] . ' ' . implode(", ", array_merge($columns, $uniqueConstraints)) . ';';
+
+        return 'ALTER TABLE ' . self::q($table['table']) . ' ' . implode(", ", array_merge($columns, $uniqueConstraints)) . ';';
     }
 
     public static function table($table) {
         $columns = [];
-        $seenColumns = []; // Track column names to avoid duplicates
-        
+        $seen = [];
         foreach ($table['data'] as $item) {
-            // Skip duplicate column names
-            if (in_array($item['name'], $seenColumns)) {
+            if (in_array($item['name'], $seen, true)) {
                 continue;
             }
-            $seenColumns[] = $item['name'];
-            
-            $isId = ($item['name'] === 'id');
-            $dataType = self::convertDataType($item['mysql_data']);
-            $attributes = self::convertAttributes($item['sql_attribute'], $isId);
-            
-            // Special handling for id field with auto-increment
-            if ($isId && strpos($item['sql_attribute'], 'AUTO_INCREMENT') !== false) {
-                $columns[] = "\"" . $item['name'] . "\" BIGSERIAL PRIMARY KEY";
-            } else {
-                $columns[] = "\"" . $item['name'] . "\" " . $dataType . ' ' . $attributes;
-            }
+            $seen[] = $item['name'];
+            $columns[] = self::column($item);
         }
-        $uniqueConstraints = self::uniqueClauses($table);
-        
-        return 'CREATE TABLE IF NOT EXISTS ' . $table['table'] . ' (' . implode(", ", array_merge($columns, $uniqueConstraints)) . ');';
+        $sql = 'CREATE TABLE IF NOT EXISTS ' . self::q($table['table']) . ' (' .
+            implode(", ", array_merge($columns, self::uniqueClauses($table))) . ');';
+        $trigger = self::onUpdateTrigger($table);
+        return $trigger === '' ? $sql : $sql . "\n" . $trigger;
     }
 
-    public static function migrate_table($table) {
-        $relation_data = [];
+    /** Foreign-key columns of a table: [[column, table, key], ...]. */
+    private static function foreignKeys($table): array {
+        $fks = [];
         foreach ($table['data'] as $items) {
-            if (isset($items['relations'])) {
-                $relation_data[] = $items;
+            foreach ($items['relations'] ?? [] as $value) {
+                $fks[] = [$value['name'], $value['table'], $value['key']];
             }
         }
-        
-        if (count($relation_data) > 0) {
-            $constraints = [];
-            
-            foreach ($relation_data as $items) {
-                foreach ($items['relations'] as $value) {
-                    $constraintName = $table['name'] . "_" . $value['name'] . "_foreign";
-                    $constraints[] = "ALTER TABLE " . $table['table'] . 
-                                   " ADD CONSTRAINT " . $constraintName . 
-                                   " FOREIGN KEY (\"" . $value['name'] . "\") " .
-                                   "REFERENCES " . $value['table'] . " (\"" . $value['key'] . "\");";
-                }
-            }
-            
-            return implode("\n", $constraints);
-        }
-        
-        return '';
+        return $fks;
     }
 
-    public static function alltable($tables, $insert = []) {
-        echo "building PostgreSQL sql";
-        
-        // Create structure.sql with all tables
-        $allTables = [];
-        foreach ($tables as $table) {
-            $allTables[] = self::table($table);
+    /**
+     * Foreign keys, each with an index on its column: MySQL creates that index
+     * itself, PostgreSQL does not.
+     */
+    public static function migrate_table($table) {
+        $sql = [];
+        foreach (self::foreignKeys($table) as [$col, $refTable, $refKey]) {
+            $base = $table['name'] . '_' . $col;
+            $sql[] = 'CREATE INDEX IF NOT EXISTS ' . self::q($base . '_index') . ' ON ' . self::q($table['table']) . ' (' . self::q($col) . ');';
+            $sql[] = 'ALTER TABLE ' . self::q($table['table']) . ' ADD CONSTRAINT ' . self::q($base . '_foreign') .
+                ' FOREIGN KEY (' . self::q($col) . ') REFERENCES ' . self::q($refTable) . ' (' . self::q($refKey) . ');';
         }
-        $structureFile = index::fopen_dir($_ENV['dir'] . "/database/structure.sql");
-        fwrite($structureFile, implode("\n\n", $allTables));
-        
-        // Create relation.sql with all foreign keys
-        $allRelations = [];
+        return implode("\n", $sql);
+    }
+
+    /**
+     * Write the PostgreSQL schema to database/Postgresql/: Structure/<Name>.sql,
+     * Relations/<Name>_relation.sql, Insert/<key>_insert.sql and Migration.sql
+     * (everything, in load order). With $primary, also write
+     * database/{structure,relation,insert,Migration}.sql, as the MySQL
+     * generator does when MySQL is the app's database.
+     */
+    public static function alltable($tables, $insert = [], bool $primary = true) {
+        echo "building PostgreSQL sql";
+        $dir = $_ENV['dir'] . '/database/Postgresql';
+        $structure = [self::onUpdateFunction()];
+        $relations = [];
         foreach ($tables as $table) {
-            $relation = self::migrate_table($table);
-            if (!empty($relation)) {
-                $allRelations[] = $relation;
+            $tableSql = self::table($table);
+            $relationSql = self::migrate_table($table);
+            index::createfile($dir . '/Structure/' . ucfirst($table['name']) . '.sql', $tableSql);
+            index::createfile($dir . '/Relations/' . ucfirst($table['name']) . '_relation.sql', $relationSql);
+            $structure[] = $tableSql;
+            if ($relationSql !== '') {
+                $relations[] = $relationSql;
             }
         }
-        $relationFile = index::fopen_dir($_ENV['dir'] . "/database/relation.sql");
-        fwrite($relationFile, implode("\n\n", $allRelations));
-        
-        // Create insert.sql for inserts
-        $insertFile = index::fopen_dir($_ENV['dir'] . "/database/insert.sql");
-        if (count($insert) > 0) {
-            fwrite($insertFile, implode("\n\n", $insert));
-        } else {
-            fwrite($insertFile, "");
+        foreach ($insert as $key => $item) {
+            index::createfile($dir . '/Insert/' . ucfirst($key) . '_insert.sql', $item);
         }
-        
-        // Create Migration.sql with everything
-        $migrationFile = index::fopen_dir($_ENV['dir'] . "/database/Migration.sql");
-        fwrite($migrationFile, implode("\n\n", $allTables));
-        if (count($allRelations) > 0) {
-            fwrite($migrationFile, "\n\n-- Foreign Keys\n\n" . implode("\n\n", $allRelations));
+
+        $structureSql = implode("\n\n", $structure) . "\n";
+        $relationSql = implode("\n\n", $relations) . "\n";
+        $insertSql = implode("\n\n", $insert) . (count($insert) ? "\n" : '');
+        $migration = $structureSql . "\n-- Foreign keys\n\n" . $relationSql .
+            (count($insert) ? "\n-- Inserts\n\n" . $insertSql : '');
+
+        index::createfile($dir . '/Migration.sql', $migration);
+        if ($primary) {
+            index::createfile($_ENV['dir'] . '/database/structure.sql', $structureSql);
+            index::createfile($_ENV['dir'] . '/database/relation.sql', $relationSql);
+            index::createfile($_ENV['dir'] . '/database/insert.sql', $insertSql);
+            index::createfile($_ENV['dir'] . '/database/Migration.sql', $migration);
         }
-        if (count($insert) > 0) {
-            fwrite($migrationFile, "\n\n-- Inserts\n\n" . implode("\n\n", $insert));
-        }
-        
         echo "     Done\n";
     }
 
@@ -256,9 +333,7 @@ class postgresql {
                 $colName = $colDef['name'];
                 if (!in_array($colName, $existingColumns)) {
                     echo "Column `$colName` missing in table `$tableName`. Adding...\n";
-                    $dataType = self::convertDataType($colDef['mysql_data']);
-                    $attr = self::convertAttributes($colDef['sql_attribute'], $colName === 'id');
-                    $alterSql = "ALTER TABLE \"$tableName\" ADD COLUMN \"$colName\" $dataType $attr";
+                    $alterSql = 'ALTER TABLE ' . self::q($tableName) . ' ADD COLUMN ' . self::column($colDef);
                     try {
                         $this->conn->exec($alterSql);
                         echo "Successfully added column `$colName` to `$tableName`.\n";
@@ -279,8 +354,11 @@ class postgresql {
                         $constraintName = $tableDef['name'] . "_" . $colDef['name'] . "_foreign";
                         if (!in_array($constraintName, $existingFks)) {
                             echo "Relation `$constraintName` missing in table `$tableName`. Adding...\n";
-                            $alterFkSql = "ALTER TABLE \"$tableName\" ADD CONSTRAINT \"$constraintName\" FOREIGN KEY (\"" . $colDef['name'] . "\") REFERENCES \"" . $relDef['table'] . "\" (\"" . $relDef['key'] . "\")";
+                            $alterFkSql = 'ALTER TABLE ' . self::q($tableName) . ' ADD CONSTRAINT ' . self::q($constraintName) .
+                                ' FOREIGN KEY (' . self::q($colDef['name']) . ') REFERENCES ' . self::q($relDef['table']) . ' (' . self::q($relDef['key']) . ')';
                             try {
+                                $this->conn->exec('CREATE INDEX IF NOT EXISTS ' . self::q($tableDef['name'] . '_' . $colDef['name'] . '_index') .
+                                    ' ON ' . self::q($tableName) . ' (' . self::q($colDef['name']) . ')');
                                 $this->conn->exec($alterFkSql);
                                 echo "Successfully added relation `$constraintName` to `$tableName`.\n";
                             } catch (\PDOException $e) {
