@@ -116,6 +116,9 @@ class index {
             $this->table["access"] = $this->rawtable['crud'];
             $this->table["crud"] = index::crudLetters($this->rawtable['crud']);
         }
+        if (isset($rawtable['index'])) {
+            $this->table["index"] = $this->rawtable['index'];
+        }
         if (isset($rawtable['unique'])) {
             $this->table["unique"] = $this->rawtable['unique'];
         }
@@ -194,6 +197,7 @@ class index {
                     'datatype' => 'number',
                     ...(isset($relation["default"]) ? ["default" => $relation["default"]] : []),
                     ...(isset($relation["sql_attribute"]) ? ["sql_attribute" => $relation["sql_attribute"]] : []),
+                    ...$this->onDelete($relation),
                     'relations' => [isset($relation['alias']) ? str_replace("_id", "", $relation['alias']) : $this->all[$r]['name'] => $rx]
                 ];
                 $this->table['relations'][isset($relation['alias']) ? str_replace("_id", "", $relation['alias']) : $this->all[$r]['name']] = $rx;
@@ -217,12 +221,45 @@ class index {
         foreach ($this->table['data'] as $i => $col) {
             if ($col['name'] === $column) {
                 $this->table['data'][$i]['relations'][$alias] = $rx;
+                $this->table['data'][$i] = array_replace($this->table['data'][$i], $this->onDelete($relation));
                 $this->table['relations'][$alias] = $rx;
                 return;
             }
         }
-        $this->table['data'][] = ['name' => $column, 'mysql_data' => 'bigint UNSIGNED', 'datatype' => 'number', 'relations' => [$alias => $rx]];
+        $this->table['data'][] = ['name' => $column, 'mysql_data' => 'bigint UNSIGNED', 'datatype' => 'number', ...$this->onDelete($relation), 'relations' => [$alias => $rx]];
         $this->table['relations'][$alias] = $rx;
+    }
+
+    /**
+     * A relation's "on_delete" (cascade, set null, restrict, no action) as the
+     * foreign key's ON DELETE rule. It is kept on the column, not in the
+     * relation map, because the model generators copy every relation key into
+     * the generated models.
+     */
+    private function onDelete($relation): array {
+        if (!is_array($relation) || !isset($relation['on_delete'])) {
+            return [];
+        }
+        $rule = strtoupper(trim(preg_replace('/[\s_]+/', ' ', (string) $relation['on_delete'])));
+        if (!in_array($rule, ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'], true)) {
+            throw new \Exception("{$this->rawtable['name']}.json: on_delete must be cascade, set null, restrict or no action, not \"{$relation['on_delete']}\".");
+        }
+        return ['on_delete' => $rule];
+    }
+
+    /**
+     * A model's "index" entries: each is a column or a list of columns.
+     * Returns [index name => [columns]]; names are <model>_<columns>_index.
+     */
+    public static function indexes(array $table): array {
+        $out = [];
+        foreach ($table['index'] ?? [] as $columns) {
+            $cols = array_values(array_filter(array_map(fn($c) => trim((string) $c), is_array($columns) ? $columns : [$columns])));
+            if ($cols) {
+                $out[$table['name'] . '_' . implode('_', $cols) . '_index'] = $cols;
+            }
+        }
+        return $out;
     }
 
     public static function templatecopy(string $folder, string $destination) {

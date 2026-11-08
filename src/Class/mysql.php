@@ -51,7 +51,7 @@ class mysql {
         $uniqueChanges = self::uniqueClauses($table, 'ADD ');
 
         return 'ALTER TABLE ' . $table['table'] . ' ' .
-                implode(",", array_merge($columnChanges, $uniqueChanges)) . ';';
+                implode(",", array_merge($columnChanges, $uniqueChanges, self::indexClauses($table, 'ADD '))) . ';';
     }
 
     public static function table($table) {
@@ -65,7 +65,16 @@ class mysql {
         $uniqueConstraints = self::uniqueClauses($table);
 
         return 'CREATE TABLE IF NOT EXISTS ' . $table['table'] . '(' .
-                implode(",", array_merge($columns, $uniqueConstraints)) . ')ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;';
+                implode(",", array_merge($columns, $uniqueConstraints, self::indexClauses($table))) . ')ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;';
+    }
+
+    /** KEY clauses for the model's "index" entries. */
+    private static function indexClauses($table, string $prefix = ''): array {
+        $out = [];
+        foreach (index::indexes($table) as $name => $cols) {
+            $out[] = $prefix . 'KEY `' . $name . '` (' . implode(',', array_map(fn($c) => '`' . $c . '`', $cols)) . ')';
+        }
+        return $out;
     }
 
     public static function migrate_table($table) {
@@ -82,7 +91,8 @@ class mysql {
             foreach ($relation_data as $id => $items) {
                 foreach ($items['relations'] as $value) {
                     $relation_key_sql .= " ADD KEY " . $table['name'] . "_" . $value['name'] . "_foreign (`" . $value['name'] . "`)";
-                    $relation_constrain_sql .= " ADD CONSTRAINT " . $table['name'] . "_" . $value['name'] . "_foreign  FOREIGN KEY  (`" . $value['name'] . "`) REFERENCES " . $value['table'] . " (`" . $value['key'] . "`)";
+                    $relation_constrain_sql .= " ADD CONSTRAINT " . $table['name'] . "_" . $value['name'] . "_foreign  FOREIGN KEY  (`" . $value['name'] . "`) REFERENCES " . $value['table'] . " (`" . $value['key'] . "`)"
+                        . (isset($items['on_delete']) ? ' ON DELETE ' . $items['on_delete'] : '');
                 }
                 if ((int) $id + 1 == count($relation_data)) {
                     $relation_key_sql .= ';';
@@ -204,7 +214,7 @@ class mysql {
                         $constraintName = $tableDef['name'] . "_" . $colDef['name'] . "_foreign";
                         if (!in_array($constraintName, $existingFks)) {
                             echo "Relation `$constraintName` missing in table `$tableName`. Adding...\n";
-                            $alterFkSql = "ALTER TABLE `$tableName` ADD CONSTRAINT `$constraintName` FOREIGN KEY (`" . $colDef['name'] . "`) REFERENCES `" . $relDef['table'] . "` (`" . $relDef['key'] . "`)";
+                            $alterFkSql = "ALTER TABLE `$tableName` ADD CONSTRAINT `$constraintName` FOREIGN KEY (`" . $colDef['name'] . "`) REFERENCES `" . $relDef['table'] . "` (`" . $relDef['key'] . "`)" . (isset($colDef['on_delete']) ? " ON DELETE " . $colDef['on_delete'] : "");
                             try {
                                 $this->conn->query($alterFkSql);
                                 echo "Successfully added relation `$constraintName` to `$tableName`.\n";
