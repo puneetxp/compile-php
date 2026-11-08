@@ -217,16 +217,21 @@ SQL;
         }
         $sql = 'CREATE TABLE IF NOT EXISTS ' . self::q($table['table']) . ' (' .
             implode(", ", array_merge($columns, self::uniqueClauses($table))) . ');';
+        // The model's "index" entries (PostgreSQL has no inline KEY clause).
+        foreach (index::indexes($table) as $name => $cols) {
+            $sql .= "\nCREATE INDEX IF NOT EXISTS " . self::q($name) . ' ON ' . self::q($table['table']) .
+                ' (' . implode(', ', array_map([self::class, 'q'], $cols)) . ');';
+        }
         $trigger = self::onUpdateTrigger($table);
         return $trigger === '' ? $sql : $sql . "\n" . $trigger;
     }
 
-    /** Foreign-key columns of a table: [[column, table, key], ...]. */
+    /** Foreign-key columns of a table: [[column, table, key, on delete rule], ...]. */
     private static function foreignKeys($table): array {
         $fks = [];
         foreach ($table['data'] as $items) {
             foreach ($items['relations'] ?? [] as $value) {
-                $fks[] = [$value['name'], $value['table'], $value['key']];
+                $fks[] = [$value['name'], $value['table'], $value['key'], $items['on_delete'] ?? null];
             }
         }
         return $fks;
@@ -238,11 +243,12 @@ SQL;
      */
     public static function migrate_table($table) {
         $sql = [];
-        foreach (self::foreignKeys($table) as [$col, $refTable, $refKey]) {
+        foreach (self::foreignKeys($table) as [$col, $refTable, $refKey, $onDelete]) {
             $base = $table['name'] . '_' . $col;
             $sql[] = 'CREATE INDEX IF NOT EXISTS ' . self::q($base . '_index') . ' ON ' . self::q($table['table']) . ' (' . self::q($col) . ');';
             $sql[] = 'ALTER TABLE ' . self::q($table['table']) . ' ADD CONSTRAINT ' . self::q($base . '_foreign') .
-                ' FOREIGN KEY (' . self::q($col) . ') REFERENCES ' . self::q($refTable) . ' (' . self::q($refKey) . ');';
+                ' FOREIGN KEY (' . self::q($col) . ') REFERENCES ' . self::q($refTable) . ' (' . self::q($refKey) . ')' .
+                ($onDelete ? ' ON DELETE ' . $onDelete : '') . ';';
         }
         return implode("\n", $sql);
     }
@@ -355,7 +361,8 @@ SQL;
                         if (!in_array($constraintName, $existingFks)) {
                             echo "Relation `$constraintName` missing in table `$tableName`. Adding...\n";
                             $alterFkSql = 'ALTER TABLE ' . self::q($tableName) . ' ADD CONSTRAINT ' . self::q($constraintName) .
-                                ' FOREIGN KEY (' . self::q($colDef['name']) . ') REFERENCES ' . self::q($relDef['table']) . ' (' . self::q($relDef['key']) . ')';
+                                ' FOREIGN KEY (' . self::q($colDef['name']) . ') REFERENCES ' . self::q($relDef['table']) . ' (' . self::q($relDef['key']) . ')' .
+                                (isset($colDef['on_delete']) ? ' ON DELETE ' . $colDef['on_delete'] : '');
                             try {
                                 $this->conn->exec('CREATE INDEX IF NOT EXISTS ' . self::q($tableDef['name'] . '_' . $colDef['name'] . '_index') .
                                     ' ON ' . self::q($tableName) . ' (' . self::q($colDef['name']) . ')');
