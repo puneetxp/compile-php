@@ -201,25 +201,27 @@ export const ' . $Name . 'Service = (new ModelService<' . $Name . '>())
         req && " . $Name . "Store.upsert(req);
       }
       async get(id: number) {
-        const req: " . $Name . " = await JFetch(this.url + id);
+        const req: " . $Name . " = await JFetch(this.url + '/' + id);
         req && " . $Name . "Store.upsert([req]);
       }
       async where(body: Where) {
-        const req: " . $Name . "[] = await JFetch(this.url, {
-          method: 'WHERE',
+        // POST <model>/where, as every adapter routes it
+        const req: " . $Name . "[] = await JFetch(this.url + '/where', {
+          method: 'POST',
           body: JSON.stringify(body),
         });
         req && " . $Name . "Store.upsert(req);
       }
       async update(i: number, body: any) {
-        const req: " . $Name . " = await JFetch(this.url, {
-          method: 'PUT',
+        // PATCH <model>/:id updates one row (PUT <model> is the bulk upsert)
+        const req: " . $Name . " = await JFetch(this.url + '/' + i, {
+          method: 'PATCH',
           body: JSON.stringify(body),
         });
         req && " . $Name . "Store.update(req);
       }
       async del(id: number) {
-        const req = await JFetch(this.url + id, {
+        const req = await JFetch(this.url + '/' + id, {
             method: 'DELETE'
         });
         req && " . $Name . "Store.del(id);
