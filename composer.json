@@ -1,6 +1,7 @@
 {
     "name": "puneetxp/compile-php",
     "description": "compile library with php from the framework",
+    "version": "0.2.26",
     "type": "library",
     "license": "Apache-2.0",
     "autoload": {

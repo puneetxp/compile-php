@@ -1,0 +1,33 @@
+name: Publish
+on:
+  push:
+    branches:
+      - main
+
+# Packagist releases a version when a tag appears. This tags the version in
+# composer.json the first time it reaches main; pushes that keep the same
+# version do nothing.
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Tag the version in composer.json
+        run: |
+          version=$(jq -r '.version // empty' composer.json)
+          if [ -z "$version" ]; then
+            echo "::error::composer.json has no version"; exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo "$version is already tagged; nothing to publish"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$version" -m "$version"
+          git push origin "refs/tags/$version"
+          echo "Tagged $version; Packagist picks it up from the tag"
