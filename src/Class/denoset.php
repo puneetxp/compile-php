@@ -148,6 +148,10 @@ export class ' . ucfirst($key) . ucfirst($table['name']) . 'Controller {' .
             }
             $relations .= '}';
         }
+        // A self relation (category.category_id) must not import the file's own
+        // export: TypeScript rejects it (TS2440), and the callback finds it anyway.
+        $self = "import { " . ucfirst($table["name"]) . "$ } from './" . ucfirst($table["name"]) . ".ts';";
+        $import = array_values(array_filter($import, fn($line) => $line !== $self));
         $import[] = "import { " . ucfirst($table["name"]) . ' } from "../../App/Interface/Model' . "/" . ucfirst($table["name"]) . '.ts";';
         $fillable = "['";
         $fillable_array = [];
