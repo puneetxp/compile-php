@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -10,7 +11,7 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"app/routes"
 
@@ -27,20 +28,21 @@ func env(k, d string) string {
 }
 
 func main() {
-	var db *sql.DB
-	var err error
 	if env("DBDRIVER", "mysql") == "postgres" {
-		db, err = sql.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		pool, err := pgxpool.New(context.Background(), fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
 			env("DBUSER", ""), env("DBPWD", ""), env("DBHOST", "localhost"), env("DBPORT", "5432"), env("DBNAME", "")))
-		model.Use(db, model.Postgres)
+		if err != nil {
+			log.Fatal(err)
+		}
+		model.UsePgx(pool)
 	} else {
 		// interpolateParams: one round trip per query.
-		db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?interpolateParams=true&parseTime=true",
+		db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?interpolateParams=true&parseTime=true",
 			env("DBUSER", ""), env("DBPWD", ""), env("DBHOST", "localhost"), env("DBPORT", "3306"), env("DBNAME", "")))
+		if err != nil {
+			log.Fatal(err)
+		}
 		model.Use(db, model.MySQL)
-	}
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	// CORS=on to let other sites call the API; CORS_ORIGINS limits it, e.g.
